@@ -123,14 +123,17 @@
     #hint.collapsed { width: 30px; height: 30px; padding: 0; overflow: hidden; border-radius: var(--radius-md); }
     #hint strong { color: var(--text); }
     kbd { display: inline-block; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; font-size: 10px; font-weight: 700; color: var(--text); font-family: var(--font-body); }
-    #sel-bar { position: absolute; top: var(--space-4); left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); padding: var(--space-2) var(--space-4); display: none; gap: var(--space-2); align-items: center; box-shadow: var(--shadow-lg); z-index: 100; animation: modalIn 0.2s cubic-bezier(0.16,1,0.3,1); }
-    #sel-bar.open { display: flex; }
-    #sel-count { font-size: var(--text-sm); font-weight: 700; color: #4ade80; }
     #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); padding: var(--space-2) var(--space-6); font-size: var(--text-sm); font-weight: 700; z-index: 3000; box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
     #toast.show { opacity: 1; }
 
     /* Panel de información mejorado */
-    #info-panel { position: absolute; top: var(--space-4); left: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); width: 260px; box-shadow: var(--shadow-lg); z-index: 50; font-size: var(--text-sm); transition: all 0.3s ease; }
+    #info-panel {
+      position: absolute; top: var(--space-4); left: var(--space-4);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
+      width: 260px; box-shadow: var(--shadow-lg); z-index: 50;
+      font-size: var(--text-sm); transition: all 0.3s ease;
+    }
     #info-panel.collapsed { width: 36px; height: 36px; padding: 0; overflow: hidden; border-radius: var(--radius-md); }
     #info-panel.collapsed #info-content { display: none; }
     #info-toggle { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); z-index: 51; }
@@ -148,7 +151,7 @@
     .cal-table th { padding: 2px; color: var(--text-muted); font-weight: 600; }
     .cal-table td { padding: 2px; text-align: center; border-radius: 4px; }
     .cal-table td.today { background: #4ade80; color: #0a1a0e; font-weight: 900; }
-    /* Indicador de carga */
+    /* Indicador de carga y error */
     #weather-loading { display: none; margin-top: var(--space-2); font-size: var(--text-xs); color: var(--text-muted); }
     #weather-error { display: none; color: #f87171; font-size: var(--text-xs); margin-top: var(--space-2); }
   </style>
@@ -175,23 +178,16 @@
   <canvas id="canvas"></canvas>
   <div id="sel-box"></div>
 
-  <div id="sel-bar">
-    <span id="sel-count">0 seleccionados</span>
-    <div class="divider"></div>
-    <button class="btn" id="btn-group" style="padding:4px 14px;font-size:12px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/></svg>Agrupar <kbd>G</kbd></button>
-    <button class="btn" id="btn-ungroup" style="padding:4px 14px;font-size:12px;">Desagrupar</button>
-    <button class="btn btn-danger" id="btn-del-sel" style="padding:4px 14px;font-size:12px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Eliminar</button>
-    <button class="btn" id="btn-desel" style="padding:4px 14px;font-size:12px;">✕</button>
-  </div>
-
-  <!-- Panel de información con calendario y clima mejorado -->
+  <!-- Panel de información con calendario y clima -->
   <div id="info-panel">
     <div id="info-toggle" title="Minimizar panel">▲</div>
     <div id="info-content">
       <div class="info-row"><span class="info-icon">🕒</span><span id="info-time" class="info-value"></span></div>
       <div class="info-row"><span class="info-icon">🌡️</span><span id="info-temp" class="info-value">--°</span></div>
-      <div class="info-row"><span class="info-icon">⬆️</span><span id="info-max" class="info-value">--°</span> <span class="info-label">máx</span></div>
-      <div class="info-row"><span class="info-icon">⬇️</span><span id="info-min" class="info-value">--°</span> <span class="info-label">mín</span></div>
+      <div class="info-row">
+        <span class="info-icon">⬆️</span><span id="info-max" class="info-value">--°</span>
+        <span class="info-icon">⬇️</span><span id="info-min" class="info-value">--°</span>
+      </div>
       <div class="info-row"><span class="info-icon">🌙</span><span id="info-moon" class="info-value">--%</span> <span class="info-label">iluminación</span></div>
       <div id="weather-loading">⏳ Cargando datos...</div>
       <div id="weather-error"></div>
@@ -267,7 +263,9 @@
 
 <script>
   (function() {
-    // Constantes y estado (igual que antes, omitido por brevedad pero se mantiene íntegro)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ESTADO Y CONSTANTES
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const COLORS = ['#f87171','#fb923c','#facc15','#4ade80','#22d3ee','#818cf8','#f472b6','#a3e635'];
     const GROUP_COLORS = ['#f87171','#fb923c','#facc15','#4ade80','#22d3ee','#818cf8','#f472b6','#a3e635','#ffffff'];
     const MAX_UNDO = 50;
@@ -287,12 +285,10 @@
     let pendingParentId = null, selectedColor = '#4ade80', freeNodePos = null;
     let ctxNodeId = null;
 
-    // Estado del clima
     let weatherData = { temp: null, max: null, min: null, moon: null };
     let userLocation = { lat: null, lon: null, isDefault: true };
     const DEFAULT_LAT = 40.4168, DEFAULT_LON = -3.7038;
 
-    // Referencias DOM
     const wrap = document.getElementById('canvas-wrap');
     const canvas = document.getElementById('canvas');
     const ctx2d = canvas.getContext('2d');
@@ -311,7 +307,6 @@
     const weatherLoading = document.getElementById('weather-loading');
     const weatherError = document.getElementById('weather-error');
 
-    // Funciones auxiliares (deepClone, pushUndo, undo, redo, scheduleSave, saveState, loadState) se mantienen
     function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
     function pushUndo() {
       const state = { nodes: deepClone(nodes), edges: deepClone(edges), groups: deepClone(groups), nextId, nextGroupId };
@@ -358,7 +353,6 @@
       } catch(e) { return false; }
     }
 
-    // Funciones de nodos (addNode, addFreeNode, deleteNodeById, deleteSelected) igual
     function addNode(parentId, label, rx, ry, type, color, extra) {
       pushUndo();
       const id = nextId++;
@@ -392,7 +386,6 @@
       selectedIds.clear(); syncNodes(); scheduleSave();
     }
 
-    // Renderizado de nodos (createNodeEl, getNodeEl, startEdit, updateNodeVisuals) igual
     function createNodeEl(node) {
       if (nodeElements.has(node.id)) return nodeElements.get(node.id);
       const wrapEl = document.createElement('div');
@@ -434,7 +427,6 @@
         e.stopPropagation();
         if (!e.ctrlKey && !e.metaKey) { if (!selectedIds.has(node.id)) selectedIds.clear(); selectedIds.add(node.id); }
         else { if (selectedIds.has(node.id)) selectedIds.delete(node.id); else selectedIds.add(node.id); }
-        updateSelBar();
         startNodeDrag(e, node.id);
       });
       nodeElements.set(node.id, wrapEl);
@@ -462,7 +454,6 @@
       }
     }
 
-    // Contenedor de nodos y sincronización
     let nodeContainer = null;
     function ensureContainer() { if (!nodeContainer) { nodeContainer = document.createElement('div'); nodeContainer.style.cssText = 'position:absolute;inset:0;pointer-events:none;'; wrap.insertBefore(nodeContainer, wrap.firstChild.nextSibling); } }
     function syncNodes() {
@@ -470,7 +461,7 @@
       const currentIds = new Set(nodes.map(n => n.id));
       for (const [id, el] of nodeElements.entries()) { if (!currentIds.has(id)) { el.remove(); nodeElements.delete(id); } }
       nodes.forEach(node => { if (!nodeElements.has(node.id)) { nodeContainer.appendChild(createNodeEl(node)); } });
-      applyLabelScale(); updatePositions(); drawEdges(); drawGroups(); updateCount(); updateSelBar();
+      applyLabelScale(); updatePositions(); drawEdges(); drawGroups(); updateCount();
     }
     function applyLabelScale() { document.documentElement.style.setProperty('--label-scale', labelScale); }
     function positionNode(node) {
@@ -524,7 +515,6 @@
     }
     function editGroup(group){ const name=prompt('Renombrar grupo:',group.name); if(name!==null&&name.trim()!==''){group.name=name.trim();scheduleSave();drawGroups();} }
 
-    // Arrastre de grupo (se mantiene)
     let groupDragId=null, groupStartPositions=[], groupDragStartMouse={};
     function startGroupDrag(gid,mx,my){
       const group=groups.find(g=>g.id===gid); if(!group)return;
@@ -541,7 +531,6 @@
     }
     function stopGroupDrag(){ if(dragging&&groupDragId) scheduleSave(); dragging=null; groupDragId=null; groupStartPositions=[]; }
 
-    // Arrastre de nodos (se mantiene)
     function startNodeDrag(e,id){
       dragging=id; const node=nodes.find(n=>n.id===id);
       const rect=wrap.getBoundingClientRect(); const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
@@ -561,9 +550,8 @@
     }
     function stopNodeDrag(){ if(dragging&&typeof dragging==='number') pushUndo(); dragging=null; document.removeEventListener('mousemove',onNodeMove); document.removeEventListener('mouseup',stopNodeDrag); scheduleSave(); }
 
-    // Pan y zoom (sin cambios)
     wrap.addEventListener('mousedown', e => {
-      if (e.target.closest('.node-wrap')||e.target.closest('#sel-bar')||e.target.closest('.group-label-el')||e.target.closest('#info-panel')||e.target.closest('#hint')) return;
+      if (e.target.closest('.node-wrap')||e.target.closest('.group-label-el')||e.target.closest('#info-panel')||e.target.closest('#hint')) return;
       if (e.ctrlKey||e.metaKey) {
         const rect=wrap.getBoundingClientRect(); selBoxActive=true; selStart={x:e.clientX-rect.left,y:e.clientY-rect.top}; selEnd={...selStart};
         wrap.classList.add('selecting'); document.addEventListener('mousemove',onSelMove); document.addEventListener('mouseup',stopSel); return;
@@ -572,40 +560,45 @@
     });
     document.addEventListener('mousemove', e => { if(panning){ transform.x=panOrigin.x+(e.clientX-panStart.x); transform.y=panOrigin.y+(e.clientY-panStart.y); updatePositions(); scheduleSave(); } });
     document.addEventListener('mouseup', ()=>{ panning=false; wrap.classList.remove('panning'); });
-    function onSelMove(e){ /* igual */ }
-    function stopSel(){ /* igual */ }
+    function onSelMove(e){
+      if(!selBoxActive)return; const rect=wrap.getBoundingClientRect(); selEnd={x:e.clientX-rect.left,y:e.clientY-rect.top};
+      const sb=document.getElementById('sel-box'); const x=Math.min(selStart.x,selEnd.x),y=Math.min(selStart.y,selEnd.y),w=Math.abs(selEnd.x-selStart.x),h=Math.abs(selEnd.y-selStart.y);
+      sb.style.display='block'; sb.style.left=x+'px'; sb.style.top=y+'px'; sb.style.width=w+'px'; sb.style.height=h+'px';
+      selectedIds.clear(); nodes.forEach(n=>{const nx=transform.x+n.x*transform.scale,ny=transform.y+n.y*transform.scale;if(nx>=x&&nx<=x+w&&ny>=y&&ny<=y+h)selectedIds.add(n.id);});
+      nodes.forEach(n=>{const el=getNodeEl(n.id);if(el)el.classList.toggle('selected',selectedIds.has(n.id));});
+    }
+    function stopSel(){ selBoxActive=false; document.getElementById('sel-box').style.display='none'; wrap.classList.remove('selecting'); document.removeEventListener('mousemove',onSelMove); document.removeEventListener('mouseup',stopSel); }
+
     wrap.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX-wrap.getBoundingClientRect().left, e.clientY-wrap.getBoundingClientRect().top, e.deltaY>0?0.9:1.1); }, {passive:false});
     function zoomAt(cx,cy,factor){ const ns=Math.min(3,Math.max(0.2,transform.scale*factor)); const ratio=ns/transform.scale; transform.x=cx-ratio*(cx-transform.x); transform.y=cy-ratio*(cy-transform.y); transform.scale=ns; updatePositions(); document.getElementById('zoom-reset').textContent=Math.round(transform.scale*100)+'%'; }
     document.getElementById('zoom-in').addEventListener('click',()=>zoomAt(wrap.clientWidth/2,wrap.clientHeight/2,1.2));
     document.getElementById('zoom-out').addEventListener('click',()=>zoomAt(wrap.clientWidth/2,wrap.clientHeight/2,0.8));
     document.getElementById('zoom-reset').addEventListener('click',()=>{transform.scale=1;transform.x=wrap.clientWidth/2;transform.y=wrap.clientHeight/2;updatePositions();document.getElementById('zoom-reset').textContent='100%';});
 
-    // Atajos (incluye creación directa con T)
+    // Atajos
     document.addEventListener('keydown', e => {
       if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'){if(e.key==='Enter'&&e.target.id==='search-input'){e.preventDefault();jumpToSearchResult();}return;}
       if(e.key==='t'||e.key==='T'){e.preventDefault(); quickAddNode();}
-      else if((e.ctrlKey||e.metaKey)&&e.key==='g'){e.preventDefault();openGroupModal();}
-      else if((e.ctrlKey||e.metaKey)&&e.key==='a'){e.preventDefault();selectedIds=new Set(nodes.map(n=>n.id));updateAllSelectedClass();updateSelBar();}
+      else if((e.ctrlKey||e.metaKey)&&e.key==='g'){e.preventDefault(); openGroupModal();}
+      else if((e.ctrlKey||e.metaKey)&&e.key==='a'){e.preventDefault();selectedIds=new Set(nodes.map(n=>n.id));updateAllSelectedClass();}
       else if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
       else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='Z'&&e.shiftKey))){e.preventDefault();redo();}
       else if((e.key==='Delete'||e.key==='Backspace')&&selectedIds.size>0){e.preventDefault();deleteSelected();}
-      else if(e.key==='Escape'){selectedIds.clear();updateAllSelectedClass();updateSelBar();closeCtxMenu();closeColorPopup();}
+      else if(e.key==='Escape'){selectedIds.clear();updateAllSelectedClass();closeCtxMenu();closeColorPopup();}
     });
     wrap.addEventListener('mousemove', e => { const rect=wrap.getBoundingClientRect(); lastMousePos={x:(e.clientX-rect.left-transform.x)/transform.scale, y:(e.clientY-rect.top-transform.y)/transform.scale}; });
     function updateAllSelectedClass(){ nodes.forEach(n=>{ const el=getNodeEl(n.id); if(el) el.classList.toggle('selected',selectedIds.has(n.id)); }); }
-    function jumpToSearchResult(){ /* igual */ }
-    // Creación rápida de nodo libre (color aleatorio)
+    function jumpToSearchResult(){ const q=document.getElementById('search-input').value.toLowerCase().trim(); if(!q)return; const match=nodes.find(n=>n.label.toLowerCase().includes(q)); if(match){ transform.x=wrap.clientWidth/2-match.x*transform.scale; transform.y=wrap.clientHeight/2-match.y*transform.scale; updatePositions(); scheduleSave(); } }
+
     function quickAddNode() {
       const color = COLORS[Math.floor(Math.random() * COLORS.length)];
       const id = addFreeNode(lastMousePos.x, lastMousePos.y, 'Nueva idea', color, { nodeKind: 'text' });
       syncNodes();
-      // Poner en modo edición inmediatamente
       const nodeEl = getNodeEl(id)?.querySelector('.node');
       if (nodeEl) startEdit(id, nodeEl);
       scheduleSave();
     }
 
-    // Pegado (Ctrl+V) se mantiene
     document.addEventListener('paste', async e => {
       if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return; e.preventDefault();
       const items=Array.from(e.clipboardData.items); const imgItem=items.find(i=>i.type.startsWith('image/'));
@@ -615,11 +608,10 @@
       toast('⚠️ No se pudo pegar');
     });
 
-    // Modal para "Añadir tema" (botón principal) y menú contextual "Añadir hijo"
     function openFreeNodeModal(wx,wy){ freeNodePos={x:wx,y:wy}; pendingParentId=null; selectedColor=COLORS[Math.floor(Math.random()*COLORS.length)]; document.getElementById('modal-title').textContent='✦ Nuevo nodo libre'; document.getElementById('modal-input').value=''; document.getElementById('link-url-input').value=''; document.getElementById('node-type-select').value='text'; document.getElementById('link-url-input').style.display='none'; buildColorPicker(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('modal-input').focus(),50); }
     function openModal(pid){ freeNodePos=null; pendingParentId=pid; const p=nodes.find(n=>n.id===pid); selectedColor=p?p.color:COLORS[Math.floor(Math.random()*COLORS.length)]; document.getElementById('modal-title').textContent=pid?`+ Sub-tarea de "${p?.label}"`:'Nuevo tema'; document.getElementById('modal-input').value=''; document.getElementById('link-url-input').value=''; document.getElementById('node-type-select').value='text'; document.getElementById('link-url-input').style.display='none'; buildColorPicker(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('modal-input').focus(),50); }
     document.getElementById('node-type-select').addEventListener('change',function(){ const t=this.value; document.getElementById('link-url-input').style.display=t==='link'?'block':'none'; document.getElementById('modal-input').placeholder=t==='link'?'Nombre del enlace...':(t==='note'?'Escribe tu nota...':'¿Qué tienes que hacer?'); });
-    function buildColorPicker(){ /* igual */ }
+    function buildColorPicker(){ const picker=document.getElementById('color-picker'); picker.innerHTML=''; COLORS.forEach(c=>{ const dot=document.createElement('div'); dot.className='color-dot'+(c===selectedColor?' active':''); dot.style.background=c; dot.addEventListener('click',()=>{selectedColor=c;picker.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('active'));dot.classList.add('active');}); picker.appendChild(dot); }); }
     function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); pendingParentId=null; freeNodePos=null; }
     document.getElementById('modal-cancel').addEventListener('click', closeModal);
     document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===document.getElementById('modal-overlay')) closeModal(); });
@@ -628,47 +620,25 @@
       const nodeType = document.getElementById('node-type-select').value;
       let label = document.getElementById('modal-input').value.trim();
       let extra = {};
-      if (nodeType === 'link') {
-        const url = document.getElementById('link-url-input').value.trim();
-        if (!url) { toast('Introduce una URL'); return; }
-        label = label || url;
-        extra = { nodeKind: 'link', url };
-      } else if (nodeType === 'note') {
-        if (!label) return;
-        extra = { nodeKind: 'note' };
-      } else {
-        if (!label) return;
-      }
-      if (freeNodePos) {
-        addFreeNode(freeNodePos.x, freeNodePos.y, label, selectedColor, extra);
-      } else {
-        const parent = nodes.find(n => n.id === pendingParentId);
-        const type = !parent ? 'child' : parent.type === 'root' ? 'child' : 'grandchild';
-        const angle = Math.random() * 2 * Math.PI;
-        const dist = type === 'child' ? 280 : 160;
-        addNode(pendingParentId, label, Math.cos(angle) * dist, Math.sin(angle) * dist, type, selectedColor, extra);
-      }
+      if (nodeType === 'link') { const url = document.getElementById('link-url-input').value.trim(); if (!url) { toast('Introduce una URL'); return; } label = label || url; extra = { nodeKind: 'link', url }; }
+      else if (nodeType === 'note') { if (!label) return; extra = { nodeKind: 'note' }; }
+      else { if (!label) return; }
+      if (freeNodePos) { addFreeNode(freeNodePos.x, freeNodePos.y, label, selectedColor, extra); }
+      else { const parent = nodes.find(n => n.id === pendingParentId); const type = !parent ? 'child' : parent.type === 'root' ? 'child' : 'grandchild'; const angle = Math.random() * 2 * Math.PI; const dist = type === 'child' ? 280 : 160; addNode(pendingParentId, label, Math.cos(angle) * dist, Math.sin(angle) * dist, type, selectedColor, extra); }
       syncNodes(); scheduleSave();
-      document.getElementById('modal-input').value = '';
-      document.getElementById('link-url-input').value = '';
+      document.getElementById('modal-input').value = ''; document.getElementById('link-url-input').value = '';
       closeModal();
     });
     document.getElementById('modal-input').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('modal-confirm').click(); if(e.key==='Escape') closeModal(); });
     document.getElementById('btn-add-topic').addEventListener('click', ()=>{ const root=nodes.find(n=>n.type==='root'); openModal(root?root.id:null); });
 
-    // Grupos (sin cambios)
     let selectedGroupColor='#4ade80';
     function openGroupModal(){ if(selectedIds.size<2){toast('Selecciona al menos 2 nodos');return;} selectedGroupColor=GROUP_COLORS[Math.floor(Math.random()*GROUP_COLORS.length)]; document.getElementById('group-name-input').value=''; const row=document.getElementById('group-color-row'); row.innerHTML=''; GROUP_COLORS.forEach(c=>{ const dot=document.createElement('div'); dot.className='gcol-dot'+(c===selectedGroupColor?' active':''); dot.style.background=c; dot.addEventListener('click',()=>{selectedGroupColor=c;row.querySelectorAll('.gcol-dot').forEach(d=>d.classList.remove('active'));dot.classList.add('active');}); row.appendChild(dot); }); document.getElementById('group-modal-overlay').style.display='flex'; setTimeout(()=>document.getElementById('group-name-input').focus(),50); }
     function closeGroupModal(){ document.getElementById('group-modal-overlay').style.display='none'; }
     document.getElementById('group-cancel').addEventListener('click',closeGroupModal);
     document.getElementById('group-modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('group-modal-overlay'))closeGroupModal();});
     document.getElementById('group-confirm').addEventListener('click',()=>{ const name=document.getElementById('group-name-input').value.trim()||'Grupo'; pushUndo(); const gid=nextGroupId++; groups.push({id:gid,name,color:selectedGroupColor,members:[...selectedIds]}); syncNodes(); closeGroupModal(); scheduleSave(); toast(`✦ Grupo "${name}" creado`); });
-    document.getElementById('btn-group').addEventListener('click',openGroupModal);
-    document.getElementById('btn-ungroup').addEventListener('click',()=>{ if(selectedIds.size===0)return; pushUndo(); groups=groups.filter(g=>!g.members.some(m=>selectedIds.has(m))); syncNodes(); scheduleSave(); toast('Grupo eliminado'); });
-    document.getElementById('btn-del-sel').addEventListener('click',deleteSelected);
-    document.getElementById('btn-desel').addEventListener('click',()=>{ selectedIds.clear(); updateAllSelectedClass(); updateSelBar(); });
 
-    // Menú contextual (se mantiene)
     function showCtxMenu(e,nodeId){ ctxNodeId=nodeId; const menu=document.getElementById('ctx-menu'); const node=nodes.find(n=>n.id===nodeId); document.getElementById('ctx-link').style.display=node?.nodeKind==='link'?'flex':'none'; menu.style.left=`${Math.min(e.clientX,window.innerWidth-200)}px`; menu.style.top=`${Math.min(e.clientY,window.innerHeight-200)}px`; menu.classList.add('open'); closeColorPopup(); }
     function closeCtxMenu(){ document.getElementById('ctx-menu').classList.remove('open'); ctxNodeId=null; }
     document.addEventListener('click',e=>{if(!e.target.closest('#ctx-menu')&&!e.target.closest('#color-popup'))closeCtxMenu();});
@@ -680,8 +650,6 @@
     function showColorPopup(x,y,nodeId){ const popup=document.getElementById('color-popup'); popup.innerHTML=''; COLORS.forEach(c=>{ const dot=document.createElement('div'); dot.className='color-dot'; dot.style.background=c; dot.addEventListener('click',()=>{ const node=nodes.find(n=>n.id===nodeId); if(node){pushUndo();node.color=c;updateNodeVisuals(node);scheduleSave();} closeColorPopup(); }); popup.appendChild(dot); }); popup.style.left=`${Math.min(x,window.innerWidth-200)}px`; popup.style.top=`${Math.min(y,window.innerHeight-150)}px`; popup.classList.add('open'); }
     function closeColorPopup(){ document.getElementById('color-popup').classList.remove('open'); }
     document.addEventListener('click',e=>{if(!e.target.closest('#color-popup'))closeColorPopup();});
-
-    function updateSelBar(){ const bar=document.getElementById('sel-bar'); if(selectedIds.size>0){ bar.classList.add('open'); document.getElementById('sel-count').textContent=`${selectedIds.size} seleccionado${selectedIds.size>1?'s':''}`; } else bar.classList.remove('open'); }
 
     document.getElementById('search-input').addEventListener('input',e=>{ const q=e.target.value.toLowerCase().trim(); nodes.forEach(n=>{ const el=getNodeEl(n.id); if(el) el.classList.toggle('dimmed',q&&!n.label.toLowerCase().includes(q)); }); });
 
@@ -720,7 +688,7 @@
     renderMiniCalendar();
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // CLIMA Y LUNA (MEJORADO)
+    // CLIMA Y LUNA
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function updateClock() {
       const now = new Date();
@@ -735,10 +703,11 @@
       infoTemp.textContent = '--°'; infoMax.textContent = '--°'; infoMin.textContent = '--°'; infoMoon.textContent = '--%';
       try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,moon_illumination&timezone=auto&forecast_days=1`;
+        console.log('Fetching weather from:', url);
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        console.log('Datos del clima:', data);
+        console.log('Weather data:', data);
         if (data.current_weather && data.daily) {
           weatherData.temp = Math.round(data.current_weather.temperature);
           weatherData.max = Math.round(data.daily.temperature_2m_max[0]);
@@ -753,7 +722,7 @@
         console.warn('Error obteniendo clima:', e);
         weatherData.temp = weatherData.max = weatherData.min = weatherData.moon = null;
         displayWeather();
-        weatherError.textContent = '❌ No se pudo obtener el clima. Verifica la conexión.';
+        weatherError.textContent = '❌ Error al obtener datos. Revisa tu conexión.';
         weatherError.style.display = 'block';
       } finally {
         weatherLoading.style.display = 'none';
