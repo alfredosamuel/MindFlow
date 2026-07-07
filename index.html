@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MindFlow — Tu Mapa Mental Completo</title>
+  <title>MindFlow — Tu Mapa Mental</title>
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -126,26 +126,27 @@
     #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); padding: var(--space-2) var(--space-6); font-size: var(--text-sm); font-weight: 700; z-index: 3000; box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
     #toast.show { opacity: 1; }
 
-    /* Panel de información */
-    #info-panel { position: absolute; top: var(--space-4); left: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); width: 260px; box-shadow: var(--shadow-lg); z-index: 50; font-size: var(--text-sm); transition: all 0.3s ease; }
+    /* Panel lateral izquierdo solo con reloj y calendario */
+    #info-panel {
+      position: absolute; top: var(--space-4); left: var(--space-4);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
+      width: 220px; box-shadow: var(--shadow-lg); z-index: 50;
+      font-size: var(--text-sm); transition: all 0.3s ease;
+    }
     #info-panel.collapsed { width: 36px; height: 36px; padding: 0; overflow: hidden; border-radius: var(--radius-md); }
     #info-panel.collapsed #info-content { display: none; }
     #info-toggle { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); z-index: 51; }
     #info-panel.collapsed #info-toggle { right: auto; left: 4px; top: 4px; }
     .info-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
-    .info-row:last-child { margin-bottom: 0; }
     .info-icon { font-size: 16px; width: 20px; text-align: center; }
     .info-value { font-weight: 700; }
-    .info-label { color: var(--text-muted); font-size: var(--text-xs); }
-    #location-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline; font-size: var(--text-xs); padding: 0; margin-top: var(--space-2); display: block; }
     #mini-calendar { margin-top: var(--space-3); }
     .cal-header { font-weight: 800; font-size: var(--text-sm); text-align: center; margin-bottom: var(--space-2); }
     .cal-table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .cal-table th { padding: 2px; color: var(--text-muted); font-weight: 600; }
     .cal-table td { padding: 2px; text-align: center; border-radius: 4px; }
     .cal-table td.today { background: #4ade80; color: #0a1a0e; font-weight: 900; }
-    #weather-loading { display: none; margin-top: var(--space-2); font-size: var(--text-xs); color: var(--text-muted); }
-    #weather-error { display: none; color: #f87171; font-size: var(--text-xs); margin-top: var(--space-2); }
   </style>
 </head>
 <body>
@@ -170,20 +171,12 @@
   <canvas id="canvas"></canvas>
   <div id="sel-box"></div>
 
+  <!-- Panel de información sin clima -->
   <div id="info-panel">
     <div id="info-toggle" title="Minimizar panel">▲</div>
     <div id="info-content">
       <div class="info-row"><span class="info-icon">🕒</span><span id="info-time" class="info-value"></span></div>
-      <div class="info-row"><span class="info-icon">🌡️</span><span id="info-temp" class="info-value">--°</span></div>
-      <div class="info-row">
-        <span class="info-icon">⬆️</span><span id="info-max" class="info-value">--°</span>
-        <span class="info-icon">⬇️</span><span id="info-min" class="info-value">--°</span>
-      </div>
-      <div class="info-row"><span class="info-icon">🌙</span><span id="info-moon" class="info-value">--%</span> <span class="info-label">iluminación</span></div>
-      <div id="weather-loading">⏳ Cargando datos...</div>
-      <div id="weather-error"></div>
       <div id="mini-calendar"></div>
-      <button id="location-btn" title="Actualizar ubicación">📍 cambiar ubicación</button>
     </div>
   </div>
 
@@ -277,10 +270,6 @@
     let ctxNodeId = null;
     let colorPopupTarget = null;
 
-    let weatherData = { temp: null, max: null, min: null, moon: null };
-    let userLocation = { lat: null, lon: null, isDefault: true };
-    const DEFAULT_LAT = 40.4168, DEFAULT_LON = -3.7038;
-
     const wrap = document.getElementById('canvas-wrap');
     const canvas = document.getElementById('canvas');
     const ctx2d = canvas.getContext('2d');
@@ -290,14 +279,7 @@
     const infoPanel = document.getElementById('info-panel');
     const infoToggle = document.getElementById('info-toggle');
     const infoTime = document.getElementById('info-time');
-    const infoTemp = document.getElementById('info-temp');
-    const infoMax = document.getElementById('info-max');
-    const infoMin = document.getElementById('info-min');
-    const infoMoon = document.getElementById('info-moon');
-    const locationBtn = document.getElementById('location-btn');
     const miniCal = document.getElementById('mini-calendar');
-    const weatherLoading = document.getElementById('weather-loading');
-    const weatherError = document.getElementById('weather-error');
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // UTILIDADES
@@ -326,22 +308,21 @@
     function scheduleSave() { clearTimeout(saveTimer); document.getElementById('save-status').textContent = '● Guardando...'; document.getElementById('save-status').style.color = 'var(--text-muted)'; saveTimer = setTimeout(saveState, 1200); }
     function saveState() {
       try {
-        const state = { nodes, edges, groups, nextId, nextGroupId, transform, labelScale, infoCollapsed: infoPanel.classList.contains('collapsed'), hintCollapsed: hint.classList.contains('collapsed'), userLocation };
-        localStorage.setItem('mindflow_v4', JSON.stringify(state));
+        const state = { nodes, edges, groups, nextId, nextGroupId, transform, labelScale, infoCollapsed: infoPanel.classList.contains('collapsed'), hintCollapsed: hint.classList.contains('collapsed') };
+        localStorage.setItem('mindflow_v5', JSON.stringify(state));
         document.getElementById('save-status').textContent = '✓ Guardado';
         document.getElementById('save-status').style.color = '#4ade80';
       } catch(e) {}
     }
     function loadState() {
       try {
-        const raw = localStorage.getItem('mindflow_v4');
+        const raw = localStorage.getItem('mindflow_v5');
         if (!raw) return false;
         const s = JSON.parse(raw);
         nodes = s.nodes || []; edges = s.edges || []; groups = s.groups || [];
         nextId = s.nextId || 1; nextGroupId = s.nextGroupId || 1;
         if (s.transform) transform = s.transform;
         if (s.labelScale) labelScale = s.labelScale;
-        if (s.userLocation) userLocation = s.userLocation;
         if (s.infoCollapsed) infoPanel.classList.add('collapsed');
         if (s.hintCollapsed) hint.classList.add('collapsed');
         return true;
@@ -416,21 +397,23 @@
         else { el.style.background = `${node.color}18`; el.style.border = `2px solid ${node.color}`; el.style.color = node.color; }
         const lbl = document.createElement('div'); lbl.className = 'node-label'; lbl.textContent = node.label; el.appendChild(lbl);
       }
+
       const addBtn = document.createElement('button'); addBtn.className = 'node-add-btn'; addBtn.textContent = '+';
       addBtn.addEventListener('click', e => { e.stopPropagation(); openModal(node.id); });
 
-      // ⭐ BOTÓN ELIMINAR CORREGIDO
+      // ⭐ BOTÓN DE ELIMINAR (FUNCIONAL)
       const delBtn = document.createElement('button');
       delBtn.className = 'node-del-btn';
       delBtn.textContent = '×';
       delBtn.setAttribute('aria-label', 'Eliminar nodo');
+      // Solo detenemos la propagación del mousedown para evitar que inicie el arrastre
       delBtn.addEventListener('mousedown', e => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.stopPropagation(); // No llamamos a preventDefault()
       });
+      // El click se encarga de la acción
       delBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        if (node.type === 'root') return;
+        e.stopPropagation(); // Evita que el clic active otros eventos del nodo
+        if (node.type === 'root') return; // No se puede eliminar el nodo raíz
         if (confirm(`¿Eliminar "${node.label || 'sin título'}"?`)) {
           deleteNodeById(node.id);
           syncNodes();
@@ -455,6 +438,7 @@
       nodeElements.set(node.id, wrapEl);
       return wrapEl;
     }
+
     function getNodeEl(id) { return nodeElements.get(id) || document.getElementById(`node-${id}`); }
     function startEdit(id, nodeEl) {
       const node = nodes.find(n => n.id === id); if (!node) return;
@@ -669,7 +653,7 @@
     document.getElementById('group-modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('group-modal-overlay'))closeGroupModal();});
     document.getElementById('group-confirm').addEventListener('click',()=>{ const name=document.getElementById('group-name-input').value.trim()||'Grupo'; pushUndo(); const gid=nextGroupId++; groups.push({id:gid,name,color:selectedGroupColor,members:[...selectedIds]}); syncNodes(); closeGroupModal(); scheduleSave(); toast(`✦ Grupo "${name}" creado`); });
 
-    // Menú contextual de nodo
+    // Menú contextual
     function showCtxMenu(e,nodeId){ ctxNodeId=nodeId; const menu=document.getElementById('ctx-menu'); const node=nodes.find(n=>n.id===nodeId); document.getElementById('ctx-link').style.display=node?.nodeKind==='link'?'flex':'none'; menu.style.left=`${Math.min(e.clientX,window.innerWidth-200)}px`; menu.style.top=`${Math.min(e.clientY,window.innerHeight-200)}px`; menu.classList.add('open'); closeColorPopup(); }
     function closeCtxMenu(){ document.getElementById('ctx-menu').classList.remove('open'); ctxNodeId=null; }
     document.addEventListener('click',e=>{if(!e.target.closest('#ctx-menu')&&!e.target.closest('#color-popup'))closeCtxMenu();});
@@ -716,7 +700,11 @@
     function updateCount(){ document.getElementById('node-count').textContent=nodes.length+' nodos'; }
     window.addEventListener('resize',updatePositions);
 
-    // Mini calendario
+    // Reloj y mini calendario
+    function updateClock() { infoTime.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }); }
+    setInterval(updateClock, 1000);
+    updateClock();
+
     function renderMiniCalendar() {
       const now = new Date();
       const year = now.getFullYear(), month = now.getMonth();
@@ -740,79 +728,8 @@
     }
     renderMiniCalendar();
 
-    // Clima y Luna
-    function updateClock() { infoTime.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }); }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    async function fetchWeatherData(lat, lon) {
-      weatherLoading.style.display = 'block';
-      weatherError.style.display = 'none';
-      infoTemp.textContent = '--°'; infoMax.textContent = '--°'; infoMin.textContent = '--°'; infoMoon.textContent = '--%';
-      try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,moon_illumination&timezone=auto&forecast_days=1`;
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        if (data.current_weather && data.daily) {
-          weatherData.temp = Math.round(data.current_weather.temperature);
-          weatherData.max = Math.round(data.daily.temperature_2m_max[0]);
-          weatherData.min = Math.round(data.daily.temperature_2m_min[0]);
-          weatherData.moon = data.daily.moon_illumination[0];
-        } else {
-          throw new Error('Formato inesperado');
-        }
-        displayWeather();
-        weatherError.style.display = 'none';
-      } catch(e) {
-        console.warn('Error clima:', e);
-        weatherData.temp = weatherData.max = weatherData.min = weatherData.moon = null;
-        displayWeather();
-        weatherError.innerHTML = `❌ No se pudo obtener el clima.<br><small>Motivo: ${e.message}.<br>Revisa la consola (F12) y tu conexión.</small>`;
-        weatherError.style.display = 'block';
-      } finally {
-        weatherLoading.style.display = 'none';
-      }
-    }
-    function displayWeather() {
-      infoTemp.textContent = weatherData.temp !== null ? `${weatherData.temp}°` : '--°';
-      infoMax.textContent = weatherData.max !== null ? `${weatherData.max}°` : '--°';
-      infoMin.textContent = weatherData.min !== null ? `${weatherData.min}°` : '--°';
-      infoMoon.textContent = weatherData.moon !== null ? `${weatherData.moon}%` : '--%';
-    }
-    function requestLocation(force = false) {
-      if (!force && userLocation.lat !== null && !userLocation.isDefault) {
-        fetchWeatherData(userLocation.lat, userLocation.lon);
-        return;
-      }
-      if (!navigator.geolocation) {
-        toast('Geolocalización no soportada, usando Madrid');
-        userLocation = { lat: DEFAULT_LAT, lon: DEFAULT_LON, isDefault: true };
-        fetchWeatherData(DEFAULT_LAT, DEFAULT_LON);
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude, isDefault: false };
-          fetchWeatherData(userLocation.lat, userLocation.lon);
-          scheduleSave();
-          toast('📍 Ubicación actualizada');
-        },
-        err => {
-          console.warn('Geolocalización denegada:', err);
-          userLocation = { lat: DEFAULT_LAT, lon: DEFAULT_LON, isDefault: true };
-          fetchWeatherData(DEFAULT_LAT, DEFAULT_LON);
-          toast('Usando ubicación por defecto (Madrid)');
-        },
-        { timeout: 5000 }
-      );
-    }
-    locationBtn.addEventListener('click', (e) => { e.stopPropagation(); requestLocation(true); });
     infoToggle.addEventListener('click', (e) => { e.stopPropagation(); infoPanel.classList.toggle('collapsed'); infoToggle.textContent = infoPanel.classList.contains('collapsed') ? '▼' : '▲'; scheduleSave(); });
     hintToggle.addEventListener('click', (e) => { e.stopPropagation(); hint.classList.toggle('collapsed'); hintToggle.textContent = hint.classList.contains('collapsed') ? '▼' : '▲'; scheduleSave(); });
-
-    if (userLocation.lat !== null) { fetchWeatherData(userLocation.lat, userLocation.lon); }
-    else { requestLocation(); }
 
     fontSlider.value = labelScale;
     fontSlider.addEventListener('input', () => { labelScale = parseFloat(fontSlider.value); applyLabelScale(); scheduleSave(); });
