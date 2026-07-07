@@ -714,7 +714,7 @@
     window.addEventListener('resize',updatePositions);
 
     // Reloj y mini calendario
-    function updateClock() { infoTime.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }); }
+    function updateClock() { infoTime.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' , second:'2-digit' }); }
     setInterval(updateClock, 1000);
     updateClock();
 
