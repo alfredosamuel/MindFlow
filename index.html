@@ -279,7 +279,9 @@
     const infoTime = document.getElementById('info-time');
     const miniCal = document.getElementById('mini-calendar');
 
-    // Utilidades
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // UTILIDADES
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
     function pushUndo() {
       const state = { nodes: deepClone(nodes), edges: deepClone(edges), groups: deepClone(groups), nextId, nextGroupId };
@@ -325,7 +327,9 @@
       } catch(e) { return false; }
     }
 
-    // Gestión de nodos
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // GESTIÓN DE NODOS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function addNode(parentId, label, rx, ry, type, color, extra) {
       pushUndo();
       const id = nextId++;
@@ -359,7 +363,9 @@
       selectedIds.clear(); syncNodes(); scheduleSave();
     }
 
-    // Renderizado de nodos
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // RENDERIZADO DE NODOS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function createNodeEl(node) {
       if (nodeElements.has(node.id)) return nodeElements.get(node.id);
       const wrapEl = document.createElement('div');
@@ -391,16 +397,15 @@
       }
 
       const addBtn = document.createElement('button'); addBtn.className = 'node-add-btn'; addBtn.textContent = '+';
-      // ✅ Botón "+" añade hijo directamente (sin ventana emergente)
       addBtn.addEventListener('click', e => { e.stopPropagation(); quickAddChildNode(node.id); });
 
-      // ✅ Botón "X" corregido
+      // ✅ BOTÓN "X" CORREGIDO
       const delBtn = document.createElement('button');
       delBtn.className = 'node-del-btn';
       delBtn.textContent = '×';
       delBtn.setAttribute('aria-label', 'Eliminar nodo');
       delBtn.addEventListener('mousedown', e => {
-        e.stopPropagation(); // detiene la propagación para no arrastrar
+        e.stopPropagation(); // solo evita el arrastre, no previene el click
       });
       delBtn.addEventListener('click', e => {
         e.stopPropagation();
@@ -517,13 +522,39 @@
     function editGroup(group){ const name=prompt('Renombrar grupo:',group.name); if(name!==null&&name.trim()!==''){group.name=name.trim();scheduleSave();drawGroups();} }
 
     let groupDragId=null, groupStartPositions=[], groupDragStartMouse={};
-    function startGroupDrag(gid,mx,my){ /* ... */ }
-    function onGroupDragMove(e){ /* ... */ }
-    function stopGroupDrag(){ /* ... */ }
+    function startGroupDrag(gid,mx,my){
+      const group=groups.find(g=>g.id===gid); if(!group)return;
+      dragging=`group-${gid}`; groupDragId=gid; groupDragStartMouse={x:mx,y:my};
+      groupStartPositions=group.members.map(id=>{const n=nodes.find(n=>n.id===id);return n?{id,x:n.x,y:n.y}:null;}).filter(Boolean);
+      pushUndo();
+    }
+    function onGroupDragMove(e){
+      if(!dragging||!groupDragId)return;
+      const dx=(e.clientX-groupDragStartMouse.x)/transform.scale, dy=(e.clientY-groupDragStartMouse.y)/transform.scale;
+      const group=groups.find(g=>g.id===groupDragId); if(!group)return;
+      group.members.forEach(mid=>{const pos=groupStartPositions.find(p=>p.id===mid);const node=nodes.find(n=>n.id===mid);if(pos&&node){node.x=pos.x+dx;node.y=pos.y+dy;}});
+      updatePositions();
+    }
+    function stopGroupDrag(){ if(dragging&&groupDragId) scheduleSave(); dragging=null; groupDragId=null; groupStartPositions=[]; }
 
-    function startNodeDrag(e,id){ /* ... */ }
-    function onNodeMove(e){ /* ... */ }
-    function stopNodeDrag(){ /* ... */ }
+    function startNodeDrag(e,id){
+      dragging=id; const node=nodes.find(n=>n.id===id);
+      const rect=wrap.getBoundingClientRect(); const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+      draggingOffset={x:sx-(transform.x+node.x*transform.scale), y:sy-(transform.y+node.y*transform.scale)};
+      dragMultiStart={}; selectedIds.forEach(sid=>{const sn=nodes.find(n=>n.id===sid);if(sn)dragMultiStart[sid]={x:sn.x,y:sn.y};});
+      if(!dragMultiStart[id]) dragMultiStart[id]={x:node.x,y:node.y};
+      document.addEventListener('mousemove',onNodeMove); document.addEventListener('mouseup',stopNodeDrag); e.preventDefault();
+    }
+    function onNodeMove(e){
+      if(!dragging||typeof dragging!=='number')return;
+      const rect=wrap.getBoundingClientRect(); const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+      const node=nodes.find(n=>n.id===dragging); const newX=(sx-draggingOffset.x-transform.x)/transform.scale, newY=(sy-draggingOffset.y-transform.y)/transform.scale;
+      const dx=newX-(dragMultiStart[dragging]?.x||node.x), dy=newY-(dragMultiStart[dragging]?.y||node.y);
+      if(selectedIds.size>1){ selectedIds.forEach(sid=>{const sn=nodes.find(n=>n.id===sid);if(sn&&dragMultiStart[sid]){sn.x=dragMultiStart[sid].x+dx;sn.y=dragMultiStart[sid].y+dy;}}); }
+      else{ node.x=newX; node.y=newY; }
+      updatePositions();
+    }
+    function stopNodeDrag(){ if(dragging&&typeof dragging==='number') pushUndo(); dragging=null; document.removeEventListener('mousemove',onNodeMove); document.removeEventListener('mouseup',stopNodeDrag); scheduleSave(); }
 
     // Pan y zoom
     wrap.addEventListener('mousedown', e => {
@@ -536,8 +567,14 @@
     });
     document.addEventListener('mousemove', e => { if(panning){ transform.x=panOrigin.x+(e.clientX-panStart.x); transform.y=panOrigin.y+(e.clientY-panStart.y); updatePositions(); scheduleSave(); } });
     document.addEventListener('mouseup', ()=>{ panning=false; wrap.classList.remove('panning'); });
-    function onSelMove(e){ /* ... */ }
-    function stopSel(){ /* ... */ }
+    function onSelMove(e){
+      if(!selBoxActive)return; const rect=wrap.getBoundingClientRect(); selEnd={x:e.clientX-rect.left,y:e.clientY-rect.top};
+      const sb=document.getElementById('sel-box'); const x=Math.min(selStart.x,selEnd.x),y=Math.min(selStart.y,selEnd.y),w=Math.abs(selEnd.x-selStart.x),h=Math.abs(selEnd.y-selStart.y);
+      sb.style.display='block'; sb.style.left=x+'px'; sb.style.top=y+'px'; sb.style.width=w+'px'; sb.style.height=h+'px';
+      selectedIds.clear(); nodes.forEach(n=>{const nx=transform.x+n.x*transform.scale,ny=transform.y+n.y*transform.scale;if(nx>=x&&nx<=x+w&&ny>=y&&ny<=y+h)selectedIds.add(n.id);});
+      nodes.forEach(n=>{const el=getNodeEl(n.id);if(el)el.classList.toggle('selected',selectedIds.has(n.id));});
+    }
+    function stopSel(){ selBoxActive=false; document.getElementById('sel-box').style.display='none'; wrap.classList.remove('selecting'); document.removeEventListener('mousemove',onSelMove); document.removeEventListener('mouseup',stopSel); }
 
     wrap.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX-wrap.getBoundingClientRect().left, e.clientY-wrap.getBoundingClientRect().top, e.deltaY>0?0.9:1.1); }, {passive:false});
     function zoomAt(cx,cy,factor){ const ns=Math.min(3,Math.max(0.2,transform.scale*factor)); const ratio=ns/transform.scale; transform.x=cx-ratio*(cx-transform.x); transform.y=cy-ratio*(cy-transform.y); transform.scale=ns; updatePositions(); document.getElementById('zoom-reset').textContent=Math.round(transform.scale*100)+'%'; }
@@ -558,7 +595,7 @@
     });
     wrap.addEventListener('mousemove', e => { const rect=wrap.getBoundingClientRect(); lastMousePos={x:(e.clientX-rect.left-transform.x)/transform.scale, y:(e.clientY-rect.top-transform.y)/transform.scale}; });
     function updateAllSelectedClass(){ nodes.forEach(n=>{ const el=getNodeEl(n.id); if(el) el.classList.toggle('selected',selectedIds.has(n.id)); }); }
-    function jumpToSearchResult(){ /* ... */ }
+    function jumpToSearchResult(){ const q=document.getElementById('search-input').value.toLowerCase().trim(); if(!q)return; const match=nodes.find(n=>n.label.toLowerCase().includes(q)); if(match){ transform.x=wrap.clientWidth/2-match.x*transform.scale; transform.y=wrap.clientHeight/2-match.y*transform.scale; updatePositions(); scheduleSave(); } }
 
     function quickAddNode() {
       const color = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -569,11 +606,11 @@
       scheduleSave();
     }
 
-    // ✅ Función para añadir hijo directamente (sin modal)
+    // ✅ Añadir hijo directamente (sin modal)
     function quickAddChildNode(parentId) {
       const parent = nodes.find(n => n.id === parentId);
       if (!parent) return;
-      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const color = parent.color;
       const type = parent.type === 'root' ? 'child' : 'grandchild';
       const angle = Math.random() * 2 * Math.PI;
       const dist = type === 'child' ? 280 : 160;
@@ -586,49 +623,90 @@
       scheduleSave();
     }
 
-    // Pegado (Ctrl+V) se mantiene
-    document.addEventListener('paste', async e => { /* ... */ });
+    // Pegado (Ctrl+V)
+    document.addEventListener('paste', async e => {
+      if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return; e.preventDefault();
+      const items=Array.from(e.clipboardData.items); const imgItem=items.find(i=>i.type.startsWith('image/'));
+      if(imgItem){ pushUndo(); const file=imgItem.getAsFile(); const reader=new FileReader(); reader.onload=ev=>{ addFreeNode(lastMousePos.x,lastMousePos.y,'','#22d3ee',{nodeKind:'image',imgSrc:ev.target.result}); syncNodes(); scheduleSave(); toast('🖼️ Imagen pegada'); }; reader.readAsDataURL(file); return; }
+      const textItem=items.find(i=>i.type==='text/plain');
+      if(textItem){ textItem.getAsString(text=>{ text=text.trim(); if(!text)return; pushUndo(); if(/^https?:\/\//i.test(text)){ addFreeNode(lastMousePos.x,lastMousePos.y,text.length>40?text.slice(0,40)+'…':text,'#22d3ee',{nodeKind:'link',url:text}); } else { const c=COLORS[Math.floor(Math.random()*COLORS.length)]; addFreeNode(lastMousePos.x,lastMousePos.y,text.slice(0,120),c); } syncNodes(); scheduleSave(); toast('📝 Pegado'); }); return; }
+      toast('⚠️ No se pudo pegar');
+    });
 
     // Modal para "Añadir tema" (botón principal) y menú contextual "Añadir hijo"
-    function openFreeNodeModal(wx,wy){ /* ... */ }
-    function openModal(pid){ /* ... */ }
-    document.getElementById('node-type-select').addEventListener('change',function(){ /* ... */ });
-    function buildColorPicker(){ /* ... */ }
-    function closeModal(){ /* ... */ }
+    function openFreeNodeModal(wx,wy){ freeNodePos={x:wx,y:wy}; pendingParentId=null; selectedColor=COLORS[Math.floor(Math.random()*COLORS.length)]; document.getElementById('modal-title').textContent='✦ Nuevo nodo libre'; document.getElementById('modal-input').value=''; document.getElementById('link-url-input').value=''; document.getElementById('node-type-select').value='text'; document.getElementById('link-url-input').style.display='none'; buildColorPicker(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('modal-input').focus(),50); }
+    function openModal(pid){ freeNodePos=null; pendingParentId=pid; const p=nodes.find(n=>n.id===pid); selectedColor=p?p.color:COLORS[Math.floor(Math.random()*COLORS.length)]; document.getElementById('modal-title').textContent=pid?`+ Sub-tarea de "${p?.label}"`:'Nuevo tema'; document.getElementById('modal-input').value=''; document.getElementById('link-url-input').value=''; document.getElementById('node-type-select').value='text'; document.getElementById('link-url-input').style.display='none'; buildColorPicker(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('modal-input').focus(),50); }
+    document.getElementById('node-type-select').addEventListener('change',function(){ const t=this.value; document.getElementById('link-url-input').style.display=t==='link'?'block':'none'; document.getElementById('modal-input').placeholder=t==='link'?'Nombre del enlace...':(t==='note'?'Escribe tu nota...':'¿Qué tienes que hacer?'); });
+    function buildColorPicker(){ const picker=document.getElementById('color-picker'); picker.innerHTML=''; COLORS.forEach(c=>{ const dot=document.createElement('div'); dot.className='color-dot'+(c===selectedColor?' active':''); dot.style.background=c; dot.addEventListener('click',()=>{selectedColor=c;picker.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('active'));dot.classList.add('active');}); picker.appendChild(dot); }); }
+    function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); pendingParentId=null; freeNodePos=null; }
     document.getElementById('modal-cancel').addEventListener('click', closeModal);
     document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===document.getElementById('modal-overlay')) closeModal(); });
-    document.getElementById('modal-confirm').addEventListener('click', function(e) { /* ... */ });
+    document.getElementById('modal-confirm').addEventListener('click', function(e) {
+      e.stopPropagation();
+      const nodeType = document.getElementById('node-type-select').value;
+      let label = document.getElementById('modal-input').value.trim();
+      let extra = {};
+      if (nodeType === 'link') { const url = document.getElementById('link-url-input').value.trim(); if (!url) { toast('Introduce una URL'); return; } label = label || url; extra = { nodeKind: 'link', url }; }
+      else if (nodeType === 'note') { if (!label) return; extra = { nodeKind: 'note' }; }
+      else { if (!label) return; }
+      if (freeNodePos) { addFreeNode(freeNodePos.x, freeNodePos.y, label, selectedColor, extra); }
+      else { const parent = nodes.find(n => n.id === pendingParentId); const type = !parent ? 'child' : parent.type === 'root' ? 'child' : 'grandchild'; const angle = Math.random() * 2 * Math.PI; const dist = type === 'child' ? 280 : 160; addNode(pendingParentId, label, Math.cos(angle) * dist, Math.sin(angle) * dist, type, selectedColor, extra); }
+      syncNodes(); scheduleSave();
+      document.getElementById('modal-input').value = ''; document.getElementById('link-url-input').value = '';
+      closeModal();
+    });
     document.getElementById('modal-input').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('modal-confirm').click(); if(e.key==='Escape') closeModal(); });
     document.getElementById('btn-add-topic').addEventListener('click', ()=>{ const root=nodes.find(n=>n.type==='root'); openModal(root?root.id:null); });
 
     // Grupos
     let selectedGroupColor='#4ade80';
-    function openGroupModal(){ /* ... */ }
-    function closeGroupModal(){ /* ... */ }
+    function openGroupModal(){ if(selectedIds.size<2){toast('Selecciona al menos 2 nodos');return;} selectedGroupColor=GROUP_COLORS[Math.floor(Math.random()*GROUP_COLORS.length)]; document.getElementById('group-name-input').value=''; const row=document.getElementById('group-color-row'); row.innerHTML=''; GROUP_COLORS.forEach(c=>{ const dot=document.createElement('div'); dot.className='gcol-dot'+(c===selectedGroupColor?' active':''); dot.style.background=c; dot.addEventListener('click',()=>{selectedGroupColor=c;row.querySelectorAll('.gcol-dot').forEach(d=>d.classList.remove('active'));dot.classList.add('active');}); row.appendChild(dot); }); document.getElementById('group-modal-overlay').style.display='flex'; setTimeout(()=>document.getElementById('group-name-input').focus(),50); }
+    function closeGroupModal(){ document.getElementById('group-modal-overlay').style.display='none'; }
     document.getElementById('group-cancel').addEventListener('click',closeGroupModal);
     document.getElementById('group-modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('group-modal-overlay'))closeGroupModal();});
-    document.getElementById('group-confirm').addEventListener('click',()=>{ /* ... */ });
+    document.getElementById('group-confirm').addEventListener('click',()=>{ const name=document.getElementById('group-name-input').value.trim()||'Grupo'; pushUndo(); const gid=nextGroupId++; groups.push({id:gid,name,color:selectedGroupColor,members:[...selectedIds]}); syncNodes(); closeGroupModal(); scheduleSave(); toast(`✦ Grupo "${name}" creado`); });
 
-    // Menú contextual de nodo (se mantiene)
-    function showCtxMenu(e,nodeId){ /* ... */ }
-    function closeCtxMenu(){ /* ... */ }
+    // Menú contextual de nodo
+    function showCtxMenu(e,nodeId){ ctxNodeId=nodeId; const menu=document.getElementById('ctx-menu'); const node=nodes.find(n=>n.id===nodeId); document.getElementById('ctx-link').style.display=node?.nodeKind==='link'?'flex':'none'; menu.style.left=`${Math.min(e.clientX,window.innerWidth-200)}px`; menu.style.top=`${Math.min(e.clientY,window.innerHeight-200)}px`; menu.classList.add('open'); closeColorPopup(); }
+    function closeCtxMenu(){ document.getElementById('ctx-menu').classList.remove('open'); ctxNodeId=null; }
     document.addEventListener('click',e=>{if(!e.target.closest('#ctx-menu')&&!e.target.closest('#color-popup'))closeCtxMenu();});
-    document.getElementById('ctx-edit').addEventListener('click',e=>{ /* ... */ });
-    document.getElementById('ctx-add-child').addEventListener('click',e=>{ /* ... */ });
-    document.getElementById('ctx-color').addEventListener('click',e=>{ /* ... */ });
-    document.getElementById('ctx-link').addEventListener('click',e=>{ /* ... */ });
-    document.getElementById('ctx-del').addEventListener('click',e=>{ /* ... */ });
+    document.getElementById('ctx-edit').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const el=getNodeEl(ctxNodeId)?.querySelector('.node');if(el)startEdit(ctxNodeId,el);closeCtxMenu();});
+    document.getElementById('ctx-add-child').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();openModal(ctxNodeId);closeCtxMenu();});
+    document.getElementById('ctx-color').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();showNodeColorPopup(e.clientX,e.clientY,ctxNodeId);closeCtxMenu();});
+    document.getElementById('ctx-link').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const n=nodes.find(n=>n.id===ctxNodeId);if(n?.url)window.open(n.url,'_blank','noopener');closeCtxMenu();});
+    document.getElementById('ctx-del').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const n=nodes.find(n=>n.id===ctxNodeId);if(n?.type==='root'){toast('No puedes eliminar el nodo raíz');closeCtxMenu();return;}if(confirm(`¿Eliminar "${n?.label}"?`)){deleteNodeById(ctxNodeId);syncNodes();scheduleSave();}closeCtxMenu();});
 
-    function showNodeColorPopup(x, y, nodeId) { /* ... */ }
-    function showGroupColorPopup(x, y, groupId) { /* ... */ }
-    function showColorPopup(x, y) { /* ... */ }
-    function closeColorPopup() { /* ... */ }
+    function showNodeColorPopup(x, y, nodeId) { colorPopupTarget = { type: 'node', id: nodeId }; showColorPopup(x, y); }
+    function showGroupColorPopup(x, y, groupId) { colorPopupTarget = { type: 'group', id: groupId }; showColorPopup(x, y); }
+    function showColorPopup(x, y) {
+      const popup = document.getElementById('color-popup'); popup.innerHTML = '';
+      COLORS.forEach(c => {
+        const dot = document.createElement('div'); dot.className = 'color-dot'; dot.style.background = c;
+        dot.addEventListener('click', () => {
+          if (colorPopupTarget) {
+            if (colorPopupTarget.type === 'node') {
+              const node = nodes.find(n => n.id === colorPopupTarget.id);
+              if (node) { pushUndo(); node.color = c; updateNodeVisuals(node); scheduleSave(); }
+            } else if (colorPopupTarget.type === 'group') {
+              const group = groups.find(g => g.id === colorPopupTarget.id);
+              if (group) { pushUndo(); group.color = c; drawGroups(); scheduleSave(); toast('🎨 Color del grupo cambiado'); }
+            }
+          }
+          closeColorPopup();
+        });
+        popup.appendChild(dot);
+      });
+      popup.style.left = `${Math.min(x, window.innerWidth - 200)}px`;
+      popup.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
+      popup.classList.add('open');
+    }
+    function closeColorPopup() { document.getElementById('color-popup').classList.remove('open'); colorPopupTarget = null; }
     document.addEventListener('click', e => { if (!e.target.closest('#color-popup')) closeColorPopup(); });
 
-    document.getElementById('search-input').addEventListener('input',e=>{ /* ... */ });
+    document.getElementById('search-input').addEventListener('input',e=>{ const q=e.target.value.toLowerCase().trim(); nodes.forEach(n=>{ const el=getNodeEl(n.id); if(el) el.classList.toggle('dimmed',q&&!n.label.toLowerCase().includes(q)); }); });
 
     const themeToggle=document.getElementById('theme-toggle');
-    themeToggle.addEventListener('click',()=>{ /* ... */ });
+    themeToggle.addEventListener('click',()=>{ currentTheme=currentTheme==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',currentTheme); themeToggle.innerHTML=currentTheme==='dark'?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'; drawEdges(); });
 
     let toastTimer;
     function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2500); }
@@ -640,7 +718,27 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    function renderMiniCalendar() { /* ... */ }
+    function renderMiniCalendar() {
+      const now = new Date();
+      const year = now.getFullYear(), month = now.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month+1, 0).getDate();
+      const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const dayHeaders = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+      let html = `<div class="cal-header">${monthNames[month]} ${year}</div><table class="cal-table"><thead><tr>`;
+      dayHeaders.forEach(d => html += `<th>${d}</th>`);
+      html += '</tr></thead><tbody><tr>';
+      for (let i = 0; i < firstDay; i++) html += '<td></td>';
+      for (let day = 1; day <= daysInMonth; day++) {
+        const isToday = day === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+        html += `<td class="${isToday ? 'today' : ''}">${day}</td>`;
+        if ((firstDay + day) % 7 === 0 && day !== daysInMonth) html += '</tr><tr>';
+      }
+      const remaining = (firstDay + daysInMonth) % 7;
+      if (remaining !== 0) for (let i = remaining; i < 7; i++) html += '<td></td>';
+      html += '</tr></tbody></table>';
+      miniCal.innerHTML = html;
+    }
     renderMiniCalendar();
 
     infoToggle.addEventListener('click', (e) => { e.stopPropagation(); infoPanel.classList.toggle('collapsed'); infoToggle.textContent = infoPanel.classList.contains('collapsed') ? '▼' : '▲'; scheduleSave(); });
@@ -650,14 +748,43 @@
     fontSlider.addEventListener('input', () => { labelScale = parseFloat(fontSlider.value); applyLabelScale(); scheduleSave(); });
 
     // Export/Import
-    function exportJSON() { /* ... */ }
-    function importJSON(file) { /* ... */ }
+    function exportJSON() {
+      const state = { version:3, exportedAt:new Date().toISOString(), nodes, edges, groups, nextId, nextGroupId, transform, labelScale };
+      const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob); const a=document.createElement('a');
+      a.href=url; a.download=`mindflow-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); toast('✓ Backup descargado');
+    }
+    function importJSON(file) {
+      if(!file)return; const reader=new FileReader();
+      reader.onload=ev=>{ try{
+        const s=JSON.parse(ev.target.result); if(!s.nodes)throw new Error('Formato inválido');
+        if(!confirm(`¿Importar mapa con ${s.nodes.length} nodos?`))return; pushUndo();
+        nodes=s.nodes||[]; edges=s.edges||[]; groups=s.groups||[]; nextId=s.nextId||1; nextGroupId=s.nextGroupId||1;
+        if(s.transform)transform=s.transform; if(s.labelScale)labelScale=s.labelScale;
+        selectedIds.clear(); syncNodes(); scheduleSave(); toast(`✓ Importado: ${nodes.length} nodos`);
+      }catch(e){alert('Error al importar: '+e.message);} };
+      reader.readAsText(file);
+    }
     document.getElementById('btn-export').addEventListener('click',exportJSON);
     document.getElementById('btn-import').addEventListener('change',e=>{importJSON(e.target.files[0]);e.target.value='';});
     wrap.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});
-    wrap.addEventListener('drop',e=>{ /* ... */ });
+    wrap.addEventListener('drop',e=>{
+      e.preventDefault(); const file=Array.from(e.dataTransfer.files).find(f=>f.name.endsWith('.json'));
+      if(file){importJSON(file);return;} const imgFile=Array.from(e.dataTransfer.files).find(f=>f.type.startsWith('image/'));
+      if(imgFile){ pushUndo(); const rect=wrap.getBoundingClientRect(); const wx=(e.clientX-rect.left-transform.x)/transform.scale, wy=(e.clientY-rect.top-transform.y)/transform.scale;
+        const reader=new FileReader(); reader.onload=ev=>{addFreeNode(wx,wy,'','#22d3ee',{nodeKind:'image',imgSrc:ev.target.result});syncNodes();scheduleSave();toast('🖼️ Imagen añadida');}; reader.readAsDataURL(imgFile); return; }
+      const url=e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain');
+      if(url&&/^https?:\/\//i.test(url.trim())){ pushUndo(); const rect=wrap.getBoundingClientRect(); const wx=(e.clientX-rect.left-transform.x)/transform.scale, wy=(e.clientY-rect.top-transform.y)/transform.scale;
+        addFreeNode(wx,wy,url.length>40?url.slice(0,40)+'…':url,'#22d3ee',{nodeKind:'link',url:url.trim()}); syncNodes(); scheduleSave(); toast('🔗 Link añadido'); }
+    });
 
-    function initDefault() { /* ... */ }
+    function initDefault() {
+      const rootId = addNode(null, '🧠 Mis tareas', 0, 0, 'root', '#ffffff');
+      const p1 = addNode(rootId, '💻 Trading Bot', -320, -200, 'child', '#818cf8'); addNode(p1, 'Backtest', -80, -120, 'grandchild', '#818cf8'); addNode(p1, 'Live test', -80, -50, 'grandchild', '#818cf8');
+      const p2 = addNode(rootId, '🎵 Música', 320, -200, 'child', '#f472b6'); addNode(p2, 'Beats nuevos', 80, -120, 'grandchild', '#f472b6'); addNode(p2, 'Mezcla', 80, -50, 'grandchild', '#f472b6');
+      const p3 = addNode(rootId, '🌐 Web', -320, 200, 'child', '#22d3ee'); addNode(p3, 'Portfolio', -80, 120, 'grandchild', '#22d3ee');
+      const p4 = addNode(rootId, '🏋️ Personal', 320, 200, 'child', '#4ade80'); addNode(p4, 'Gym', 80, 120, 'grandchild', '#4ade80'); addNode(p4, 'Sueño', 80, 180, 'grandchild', '#4ade80');
+    }
     function init() {
       transform.x = wrap.clientWidth/2; transform.y = wrap.clientHeight/2;
       const loaded = loadState();
