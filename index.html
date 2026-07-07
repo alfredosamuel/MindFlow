@@ -126,14 +126,8 @@
     #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); padding: var(--space-2) var(--space-6); font-size: var(--text-sm); font-weight: 700; z-index: 3000; box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
     #toast.show { opacity: 1; }
 
-    /* Panel de información mejorado */
-    #info-panel {
-      position: absolute; top: var(--space-4); left: var(--space-4);
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
-      width: 260px; box-shadow: var(--shadow-lg); z-index: 50;
-      font-size: var(--text-sm); transition: all 0.3s ease;
-    }
+    /* Panel de información */
+    #info-panel { position: absolute; top: var(--space-4); left: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); width: 260px; box-shadow: var(--shadow-lg); z-index: 50; font-size: var(--text-sm); transition: all 0.3s ease; }
     #info-panel.collapsed { width: 36px; height: 36px; padding: 0; overflow: hidden; border-radius: var(--radius-md); }
     #info-panel.collapsed #info-content { display: none; }
     #info-toggle { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); z-index: 51; }
@@ -144,14 +138,12 @@
     .info-value { font-weight: 700; }
     .info-label { color: var(--text-muted); font-size: var(--text-xs); }
     #location-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline; font-size: var(--text-xs); padding: 0; margin-top: var(--space-2); display: block; }
-    /* Mini calendario */
     #mini-calendar { margin-top: var(--space-3); }
     .cal-header { font-weight: 800; font-size: var(--text-sm); text-align: center; margin-bottom: var(--space-2); }
     .cal-table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .cal-table th { padding: 2px; color: var(--text-muted); font-weight: 600; }
     .cal-table td { padding: 2px; text-align: center; border-radius: 4px; }
     .cal-table td.today { background: #4ade80; color: #0a1a0e; font-weight: 900; }
-    /* Indicador de carga y error */
     #weather-loading { display: none; margin-top: var(--space-2); font-size: var(--text-xs); color: var(--text-muted); }
     #weather-error { display: none; color: #f87171; font-size: var(--text-xs); margin-top: var(--space-2); }
   </style>
@@ -178,7 +170,6 @@
   <canvas id="canvas"></canvas>
   <div id="sel-box"></div>
 
-  <!-- Panel de información con calendario y clima -->
   <div id="info-panel">
     <div id="info-toggle" title="Minimizar panel">▲</div>
     <div id="info-content">
@@ -284,6 +275,7 @@
     let undoStack = [], redoStack = [];
     let pendingParentId = null, selectedColor = '#4ade80', freeNodePos = null;
     let ctxNodeId = null;
+    let colorPopupTarget = null;
 
     let weatherData = { temp: null, max: null, min: null, moon: null };
     let userLocation = { lat: null, lon: null, isDefault: true };
@@ -307,6 +299,9 @@
     const weatherLoading = document.getElementById('weather-loading');
     const weatherError = document.getElementById('weather-error');
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // UTILIDADES
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
     function pushUndo() {
       const state = { nodes: deepClone(nodes), edges: deepClone(edges), groups: deepClone(groups), nextId, nextGroupId };
@@ -353,6 +348,9 @@
       } catch(e) { return false; }
     }
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // GESTIÓN DE NODOS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function addNode(parentId, label, rx, ry, type, color, extra) {
       pushUndo();
       const id = nextId++;
@@ -386,6 +384,9 @@
       selectedIds.clear(); syncNodes(); scheduleSave();
     }
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // RENDERIZADO DE NODOS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function createNodeEl(node) {
       if (nodeElements.has(node.id)) return nodeElements.get(node.id);
       const wrapEl = document.createElement('div');
@@ -417,9 +418,31 @@
       }
       const addBtn = document.createElement('button'); addBtn.className = 'node-add-btn'; addBtn.textContent = '+';
       addBtn.addEventListener('click', e => { e.stopPropagation(); openModal(node.id); });
-      const delBtn = document.createElement('button'); delBtn.className = 'node-del-btn'; delBtn.textContent = '×';
-      delBtn.addEventListener('click', e => { e.stopPropagation(); if (node.type==='root') return; if (confirm(`¿Eliminar "${node.label}"?`)) { deleteNodeById(node.id); syncNodes(); scheduleSave(); } });
-      wrapEl.appendChild(el); wrapEl.appendChild(addBtn); wrapEl.appendChild(delBtn);
+
+      // ⭐ BOTÓN ELIMINAR CORREGIDO
+      const delBtn = document.createElement('button');
+      delBtn.className = 'node-del-btn';
+      delBtn.textContent = '×';
+      delBtn.setAttribute('aria-label', 'Eliminar nodo');
+      delBtn.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (node.type === 'root') return;
+        if (confirm(`¿Eliminar "${node.label || 'sin título'}"?`)) {
+          deleteNodeById(node.id);
+          syncNodes();
+          scheduleSave();
+          toast('🗑️ Nodo eliminado');
+        }
+      });
+
+      wrapEl.appendChild(el);
+      wrapEl.appendChild(addBtn);
+      wrapEl.appendChild(delBtn);
+
       el.addEventListener('dblclick', e => { e.stopPropagation(); startEdit(node.id, el); });
       wrapEl.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showCtxMenu(e, node.id); });
       wrapEl.addEventListener('mousedown', e => {
@@ -509,6 +532,10 @@
           function onMouseUp(){ document.removeEventListener('mousemove',onMouseMove); document.removeEventListener('mouseup',onMouseUp); if(!moved) editGroup(g); else stopGroupDrag(); }
           document.addEventListener('mousemove',onMouseMove); document.addEventListener('mouseup',onMouseUp);
         });
+        lbl.addEventListener('contextmenu', e => {
+          e.preventDefault(); e.stopPropagation();
+          showGroupColorPopup(e.clientX, e.clientY, g.id);
+        });
         wrap.appendChild(lbl);
       });
       groups.forEach(g=>g.members.forEach(id=>{ const el=getNodeEl(id); if(el) el.classList.add('group-member'); }));
@@ -550,6 +577,7 @@
     }
     function stopNodeDrag(){ if(dragging&&typeof dragging==='number') pushUndo(); dragging=null; document.removeEventListener('mousemove',onNodeMove); document.removeEventListener('mouseup',stopNodeDrag); scheduleSave(); }
 
+    // Pan y zoom
     wrap.addEventListener('mousedown', e => {
       if (e.target.closest('.node-wrap')||e.target.closest('.group-label-el')||e.target.closest('#info-panel')||e.target.closest('#hint')) return;
       if (e.ctrlKey||e.metaKey) {
@@ -608,6 +636,7 @@
       toast('⚠️ No se pudo pegar');
     });
 
+    // Modal añadir
     function openFreeNodeModal(wx,wy){ freeNodePos={x:wx,y:wy}; pendingParentId=null; selectedColor=COLORS[Math.floor(Math.random()*COLORS.length)]; document.getElementById('modal-title').textContent='✦ Nuevo nodo libre'; document.getElementById('modal-input').value=''; document.getElementById('link-url-input').value=''; document.getElementById('node-type-select').value='text'; document.getElementById('link-url-input').style.display='none'; buildColorPicker(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('modal-input').focus(),50); }
     function openModal(pid){ freeNodePos=null; pendingParentId=pid; const p=nodes.find(n=>n.id===pid); selectedColor=p?p.color:COLORS[Math.floor(Math.random()*COLORS.length)]; document.getElementById('modal-title').textContent=pid?`+ Sub-tarea de "${p?.label}"`:'Nuevo tema'; document.getElementById('modal-input').value=''; document.getElementById('link-url-input').value=''; document.getElementById('node-type-select').value='text'; document.getElementById('link-url-input').style.display='none'; buildColorPicker(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('modal-input').focus(),50); }
     document.getElementById('node-type-select').addEventListener('change',function(){ const t=this.value; document.getElementById('link-url-input').style.display=t==='link'?'block':'none'; document.getElementById('modal-input').placeholder=t==='link'?'Nombre del enlace...':(t==='note'?'Escribe tu nota...':'¿Qué tienes que hacer?'); });
@@ -632,6 +661,7 @@
     document.getElementById('modal-input').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('modal-confirm').click(); if(e.key==='Escape') closeModal(); });
     document.getElementById('btn-add-topic').addEventListener('click', ()=>{ const root=nodes.find(n=>n.type==='root'); openModal(root?root.id:null); });
 
+    // Grupos
     let selectedGroupColor='#4ade80';
     function openGroupModal(){ if(selectedIds.size<2){toast('Selecciona al menos 2 nodos');return;} selectedGroupColor=GROUP_COLORS[Math.floor(Math.random()*GROUP_COLORS.length)]; document.getElementById('group-name-input').value=''; const row=document.getElementById('group-color-row'); row.innerHTML=''; GROUP_COLORS.forEach(c=>{ const dot=document.createElement('div'); dot.className='gcol-dot'+(c===selectedGroupColor?' active':''); dot.style.background=c; dot.addEventListener('click',()=>{selectedGroupColor=c;row.querySelectorAll('.gcol-dot').forEach(d=>d.classList.remove('active'));dot.classList.add('active');}); row.appendChild(dot); }); document.getElementById('group-modal-overlay').style.display='flex'; setTimeout(()=>document.getElementById('group-name-input').focus(),50); }
     function closeGroupModal(){ document.getElementById('group-modal-overlay').style.display='none'; }
@@ -639,17 +669,42 @@
     document.getElementById('group-modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('group-modal-overlay'))closeGroupModal();});
     document.getElementById('group-confirm').addEventListener('click',()=>{ const name=document.getElementById('group-name-input').value.trim()||'Grupo'; pushUndo(); const gid=nextGroupId++; groups.push({id:gid,name,color:selectedGroupColor,members:[...selectedIds]}); syncNodes(); closeGroupModal(); scheduleSave(); toast(`✦ Grupo "${name}" creado`); });
 
+    // Menú contextual de nodo
     function showCtxMenu(e,nodeId){ ctxNodeId=nodeId; const menu=document.getElementById('ctx-menu'); const node=nodes.find(n=>n.id===nodeId); document.getElementById('ctx-link').style.display=node?.nodeKind==='link'?'flex':'none'; menu.style.left=`${Math.min(e.clientX,window.innerWidth-200)}px`; menu.style.top=`${Math.min(e.clientY,window.innerHeight-200)}px`; menu.classList.add('open'); closeColorPopup(); }
     function closeCtxMenu(){ document.getElementById('ctx-menu').classList.remove('open'); ctxNodeId=null; }
     document.addEventListener('click',e=>{if(!e.target.closest('#ctx-menu')&&!e.target.closest('#color-popup'))closeCtxMenu();});
     document.getElementById('ctx-edit').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const el=getNodeEl(ctxNodeId)?.querySelector('.node');if(el)startEdit(ctxNodeId,el);closeCtxMenu();});
     document.getElementById('ctx-add-child').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();openModal(ctxNodeId);closeCtxMenu();});
-    document.getElementById('ctx-color').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();showColorPopup(e.clientX,e.clientY,ctxNodeId);closeCtxMenu();});
+    document.getElementById('ctx-color').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();showNodeColorPopup(e.clientX,e.clientY,ctxNodeId);closeCtxMenu();});
     document.getElementById('ctx-link').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const n=nodes.find(n=>n.id===ctxNodeId);if(n?.url)window.open(n.url,'_blank','noopener');closeCtxMenu();});
     document.getElementById('ctx-del').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const n=nodes.find(n=>n.id===ctxNodeId);if(n?.type==='root'){toast('No puedes eliminar el nodo raíz');closeCtxMenu();return;}if(confirm(`¿Eliminar "${n?.label}"?`)){deleteNodeById(ctxNodeId);syncNodes();scheduleSave();}closeCtxMenu();});
-    function showColorPopup(x,y,nodeId){ const popup=document.getElementById('color-popup'); popup.innerHTML=''; COLORS.forEach(c=>{ const dot=document.createElement('div'); dot.className='color-dot'; dot.style.background=c; dot.addEventListener('click',()=>{ const node=nodes.find(n=>n.id===nodeId); if(node){pushUndo();node.color=c;updateNodeVisuals(node);scheduleSave();} closeColorPopup(); }); popup.appendChild(dot); }); popup.style.left=`${Math.min(x,window.innerWidth-200)}px`; popup.style.top=`${Math.min(y,window.innerHeight-150)}px`; popup.classList.add('open'); }
-    function closeColorPopup(){ document.getElementById('color-popup').classList.remove('open'); }
-    document.addEventListener('click',e=>{if(!e.target.closest('#color-popup'))closeColorPopup();});
+
+    function showNodeColorPopup(x, y, nodeId) { colorPopupTarget = { type: 'node', id: nodeId }; showColorPopup(x, y); }
+    function showGroupColorPopup(x, y, groupId) { colorPopupTarget = { type: 'group', id: groupId }; showColorPopup(x, y); }
+    function showColorPopup(x, y) {
+      const popup = document.getElementById('color-popup'); popup.innerHTML = '';
+      COLORS.forEach(c => {
+        const dot = document.createElement('div'); dot.className = 'color-dot'; dot.style.background = c;
+        dot.addEventListener('click', () => {
+          if (colorPopupTarget) {
+            if (colorPopupTarget.type === 'node') {
+              const node = nodes.find(n => n.id === colorPopupTarget.id);
+              if (node) { pushUndo(); node.color = c; updateNodeVisuals(node); scheduleSave(); }
+            } else if (colorPopupTarget.type === 'group') {
+              const group = groups.find(g => g.id === colorPopupTarget.id);
+              if (group) { pushUndo(); group.color = c; drawGroups(); scheduleSave(); toast('🎨 Color del grupo cambiado'); }
+            }
+          }
+          closeColorPopup();
+        });
+        popup.appendChild(dot);
+      });
+      popup.style.left = `${Math.min(x, window.innerWidth - 200)}px`;
+      popup.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
+      popup.classList.add('open');
+    }
+    function closeColorPopup() { document.getElementById('color-popup').classList.remove('open'); colorPopupTarget = null; }
+    document.addEventListener('click', e => { if (!e.target.closest('#color-popup')) closeColorPopup(); });
 
     document.getElementById('search-input').addEventListener('input',e=>{ const q=e.target.value.toLowerCase().trim(); nodes.forEach(n=>{ const el=getNodeEl(n.id); if(el) el.classList.toggle('dimmed',q&&!n.label.toLowerCase().includes(q)); }); });
 
@@ -661,9 +716,7 @@
     function updateCount(){ document.getElementById('node-count').textContent=nodes.length+' nodos'; }
     window.addEventListener('resize',updatePositions);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // MINI CALENDARIO
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Mini calendario
     function renderMiniCalendar() {
       const now = new Date();
       const year = now.getFullYear(), month = now.getMonth();
@@ -687,13 +740,8 @@
     }
     renderMiniCalendar();
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // CLIMA Y LUNA
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    function updateClock() {
-      const now = new Date();
-      infoTime.textContent = now.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-    }
+    // Clima y Luna
+    function updateClock() { infoTime.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }); }
     setInterval(updateClock, 1000);
     updateClock();
 
@@ -703,39 +751,35 @@
       infoTemp.textContent = '--°'; infoMax.textContent = '--°'; infoMin.textContent = '--°'; infoMoon.textContent = '--%';
       try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,moon_illumination&timezone=auto&forecast_days=1`;
-        console.log('Fetching weather from:', url);
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        console.log('Weather data:', data);
         if (data.current_weather && data.daily) {
           weatherData.temp = Math.round(data.current_weather.temperature);
           weatherData.max = Math.round(data.daily.temperature_2m_max[0]);
           weatherData.min = Math.round(data.daily.temperature_2m_min[0]);
           weatherData.moon = data.daily.moon_illumination[0];
         } else {
-          throw new Error('Formato de respuesta inesperado');
+          throw new Error('Formato inesperado');
         }
         displayWeather();
         weatherError.style.display = 'none';
       } catch(e) {
-        console.warn('Error obteniendo clima:', e);
+        console.warn('Error clima:', e);
         weatherData.temp = weatherData.max = weatherData.min = weatherData.moon = null;
         displayWeather();
-        weatherError.textContent = '❌ Error al obtener datos. Revisa tu conexión.';
+        weatherError.innerHTML = `❌ No se pudo obtener el clima.<br><small>Motivo: ${e.message}.<br>Revisa la consola (F12) y tu conexión.</small>`;
         weatherError.style.display = 'block';
       } finally {
         weatherLoading.style.display = 'none';
       }
     }
-
     function displayWeather() {
       infoTemp.textContent = weatherData.temp !== null ? `${weatherData.temp}°` : '--°';
       infoMax.textContent = weatherData.max !== null ? `${weatherData.max}°` : '--°';
       infoMin.textContent = weatherData.min !== null ? `${weatherData.min}°` : '--°';
       infoMoon.textContent = weatherData.moon !== null ? `${weatherData.moon}%` : '--%';
     }
-
     function requestLocation(force = false) {
       if (!force && userLocation.lat !== null && !userLocation.isDefault) {
         fetchWeatherData(userLocation.lat, userLocation.lon);
@@ -763,42 +807,17 @@
         { timeout: 5000 }
       );
     }
-
     locationBtn.addEventListener('click', (e) => { e.stopPropagation(); requestLocation(true); });
+    infoToggle.addEventListener('click', (e) => { e.stopPropagation(); infoPanel.classList.toggle('collapsed'); infoToggle.textContent = infoPanel.classList.contains('collapsed') ? '▼' : '▲'; scheduleSave(); });
+    hintToggle.addEventListener('click', (e) => { e.stopPropagation(); hint.classList.toggle('collapsed'); hintToggle.textContent = hint.classList.contains('collapsed') ? '▼' : '▲'; scheduleSave(); });
 
-    infoToggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      infoPanel.classList.toggle('collapsed');
-      infoToggle.textContent = infoPanel.classList.contains('collapsed') ? '▼' : '▲';
-      scheduleSave();
-    });
+    if (userLocation.lat !== null) { fetchWeatherData(userLocation.lat, userLocation.lon); }
+    else { requestLocation(); }
 
-    hintToggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      hint.classList.toggle('collapsed');
-      hintToggle.textContent = hint.classList.contains('collapsed') ? '▼' : '▲';
-      scheduleSave();
-    });
-
-    if (userLocation.lat !== null) {
-      fetchWeatherData(userLocation.lat, userLocation.lon);
-    } else {
-      requestLocation();
-    }
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // TAMAÑO TEXTO
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     fontSlider.value = labelScale;
-    fontSlider.addEventListener('input', () => {
-      labelScale = parseFloat(fontSlider.value);
-      applyLabelScale();
-      scheduleSave();
-    });
+    fontSlider.addEventListener('input', () => { labelScale = parseFloat(fontSlider.value); applyLabelScale(); scheduleSave(); });
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // EXPORT / IMPORT JSON
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Export/Import
     function exportJSON() {
       const state = { version:3, exportedAt:new Date().toISOString(), nodes, edges, groups, nextId, nextGroupId, transform, labelScale };
       const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
