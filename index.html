@@ -399,7 +399,7 @@
       }
 
       const addBtn = document.createElement('button'); addBtn.className = 'node-add-btn'; addBtn.textContent = '+';
-      addBtn.addEventListener('click', e => { e.stopPropagation(); openModal(node.id); });
+      addBtn.addEventListener('click', e => { e.stopPropagation(); quickAddChildNode(node.id); });
 
       // ⭐ BOTÓN DE ELIMINAR (FUNCIONAL)
       const delBtn = document.createElement('button');
@@ -611,6 +611,23 @@
       scheduleSave();
     }
 
+    function quickAddChildNode(parentId) {
+      const parent = nodes.find(n => n.id === parentId);
+      if (!parent) return;
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const type = parent.type === 'root' ? 'child' : 'grandchild';
+      const angle = Math.random() * 2 * Math.PI;
+      const dist = type === 'child' ? 280 : 160;
+      const rx = Math.cos(angle) * dist;
+      const ry = Math.sin(angle) * dist;
+      const id = addNode(parentId, 'Nueva idea', rx, ry, type, color, { nodeKind: 'text' });
+      syncNodes();
+      const nodeEl = getNodeEl(id)?.querySelector('.node');
+      if (nodeEl) startEdit(id, nodeEl);
+      scheduleSave();
+    }
+
+  
     document.addEventListener('paste', async e => {
       if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return; e.preventDefault();
       const items=Array.from(e.clipboardData.items); const imgItem=items.find(i=>i.type.startsWith('image/'));
