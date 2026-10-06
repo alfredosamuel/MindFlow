@@ -336,7 +336,7 @@
       <strong>⌨️ Shortcuts:</strong><br>
       <kbd>T</kbd> o <kbd>doble clic</kbd> en vacío: texto libre<br>
       <kbd>K</kbd> texto con casilla (tachar)<br>
-      <kbd>Enter</kbd> salto de línea (texto libre)<br>
+      <kbd>Enter</kbd> terminar de escribir · <kbd>Ctrl+Enter</kbd> salto de línea<br>
       <kbd>Esc</kbd> terminar de escribir<br>
       <kbd>Ctrl+B</kbd> negrita · <kbd>Ctrl+I</kbd> cursiva<br>
       <kbd>Ctrl+V</kbd> pegar imagen/link/texto<br>
@@ -902,8 +902,8 @@
         if ((e.ctrlKey||e.metaKey) && (e.key==='b'||e.key==='B')) { e.preventDefault(); toggleFmt('bold'); return; }
         if ((e.ctrlKey||e.metaKey) && (e.key==='i'||e.key==='I')) { e.preventDefault(); toggleFmt('italic'); return; }
         if (e.key === 'Escape') { e.preventDefault(); finish(); }
-        else if (e.key === 'Enter') {
-          if (free) { if (e.ctrlKey || e.metaKey) { e.preventDefault(); finish(); } }   // Enter = salto de línea
+        else if (e.key === 'Enter') {   // Enter = terminar · Ctrl+Enter = salto de línea
+          if (e.ctrlKey || e.metaKey) { e.preventDefault(); input.setRangeText('\n', input.selectionStart, input.selectionEnd, 'end'); input.dispatchEvent(new Event('input')); }
           else if (!e.shiftKey) { e.preventDefault(); finish(); }
         }
       });
