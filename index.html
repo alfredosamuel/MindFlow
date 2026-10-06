@@ -94,7 +94,20 @@
     }
     #add-tab-btn:hover { color: var(--text); }
 
-    #canvas-wrap { flex: 1; position: relative; overflow: hidden; cursor: crosshair; }
+    #workspace { flex: 1; display: flex; min-height: 0; min-width: 0; position: relative; }
+    #canvas-wrap { flex: 1; min-width: 0; position: relative; overflow: hidden; cursor: crosshair; }
+    #cal-panel { display: none; flex-direction: column; width: 380px; flex-shrink: 0; background: var(--surface); border-left: 1px solid var(--border); z-index: 60; }
+    #workspace.cal-open #cal-panel { display: flex; }
+    #workspace.cal-left #cal-panel { order: -1; border-left: none; border-right: 1px solid var(--border); }
+    .cal-head { display: flex; align-items: center; gap: 2px; padding: 3px var(--space-2); border-bottom: 1px solid var(--border); font-size: var(--text-xs); color: var(--text-muted); }
+    .cal-head .cal-title { flex: 1; padding-left: var(--space-1); }
+    .cal-head button { width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-md); cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+    .cal-head button:hover { background: var(--surface-2); color: var(--text); }
+    #cal-frame { flex: 1; width: 100%; border: 0; background: #fff; display: none; }
+    #cal-setup { display: none; flex-direction: column; gap: var(--space-2); padding: var(--space-3); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.5; }
+    #cal-login { display: none; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    #cal-src-input { width: 100%; padding: var(--space-2); border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-family: var(--font-body); font-size: var(--text-xs); outline: none; user-select: text; }
+    @media (max-width: 720px) { #cal-panel { position: absolute; inset: 0; width: 100%; } }
     #canvas-wrap.panning { cursor: grabbing; }
     #canvas-wrap.selecting { cursor: crosshair; }
     #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -134,7 +147,6 @@
     .node-add-btn:hover { background: rgba(128,128,128,0.5); }
     .node-del-btn { position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; border-radius: var(--radius-full); border: none; background: #f87171; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity var(--tr); pointer-events: all; z-index: 10; font-weight: 400; }
     .node-wrap:hover .node-del-btn { opacity: 1; }
-    .node-wrap.root-wrap .node-del-btn { display: none; }
     .group-el { position: absolute; pointer-events: none; border: 2px solid; border-radius: var(--radius-xl); z-index: 1; }
     .group-label-el { position: absolute; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--radius-full); z-index: 2; pointer-events: all; cursor: grab; }
     .group-label-el:active { cursor: grabbing; }
@@ -254,6 +266,7 @@
     <button class="btn btn-primary" id="btn-add-topic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Añadir tema</span></button>
     <button class="btn" id="btn-export" title="Exportar como JSON"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span class="lbl">Exportar</span></button>
     <label class="btn" style="cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span class="lbl">Importar</span><input type="file" id="btn-import" accept=".json" style="display:none;"/></label>
+    <button class="btn btn-icon" id="btn-cal" title="Google Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></button>
     <button class="btn" id="btn-auth" title="Entrar con Google"><span id="auth-icon" style="display:inline-flex;"><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span><span class="lbl" id="auth-label">Entrar con Google</span></button>
     <button class="btn btn-icon" id="theme-toggle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
   </div>
@@ -264,6 +277,7 @@
   <button id="add-tab-btn" title="Nueva pizarra">+</button>
 </div>
 
+<div id="workspace">
 <div id="canvas-wrap">
   <canvas id="canvas"></canvas>
   <div id="sel-box"></div>
@@ -310,6 +324,26 @@
       <kbd>Arrastra grupo</kbd> mover todo el grupo
     </div>
   </div>
+</div>
+
+<aside id="cal-panel">
+  <div class="cal-head">
+    <span class="cal-title">Google Calendar</span>
+    <button id="cal-swap" title="Cambiar de lado (izquierda / derecha)">⇄</button>
+    <button id="cal-config" title="Cambiar calendario">⚙</button>
+    <button id="cal-close" title="Cerrar">✕</button>
+  </div>
+  <div id="cal-login">
+    <span>Entra con tu cuenta de Google y aquí se mostrará tu calendario automáticamente.</span>
+    <button class="btn btn-primary" id="cal-login-btn">Entrar con Google</button>
+  </div>
+  <div id="cal-setup">
+    <span>Opcional: usar otro calendario distinto al de tu cuenta. Pega un correo, un ID de calendario o el código de inserción (iframe). Déjalo vacío para volver al calendario de tu cuenta de Google.</span>
+    <input type="text" id="cal-src-input" placeholder="otrocorreo@gmail.com" autocomplete="off">
+    <button class="btn btn-primary" id="cal-save">Guardar</button>
+  </div>
+  <iframe id="cal-frame" title="Google Calendar"></iframe>
+</aside>
 </div>
 
 <div id="panel">
@@ -528,7 +562,6 @@
       nextId = 1; nextGroupId = 1; labelScale = 1;
       undoStack = []; redoStack = [];
       transform = { x: wrap.clientWidth/2, y: wrap.clientHeight/2, scale: 1 };
-      addNodeInternal(null, '🧠 Mis tareas', 0, 0, 'root', '#ffffff', undefined, true);
       tabs.push(createDefaultTabState(name));
       currentTabIndex = tabs.length - 1;
       saveCurrentTabState();
@@ -672,6 +705,17 @@
       return id;
     }
     function deleteNodeById(id) {
+      const target = nodes.find(n => n.id === id);
+      if (target && target.type === 'root') {   // el nodo central se borra solo; sus temas quedan sueltos
+        pushUndo();
+        nodes.forEach(n => { if (n.parentId === id) n.parentId = null; });
+        nodes = nodes.filter(n => n.id !== id);
+        edges = edges.filter(e => e.from !== id && e.to !== id);
+        groups.forEach(g => { g.members = g.members.filter(m => m !== id); });
+        groups = groups.filter(g => g.members.length > 0);
+        selectedIds.delete(id);
+        return;
+      }
       function getDesc(nid) { return nodes.filter(n => n.parentId === nid).reduce((a,c) => a.concat([c.id], getDesc(c.id)), []); }
       const toDelete = [id, ...getDesc(id)];
       pushUndo();
@@ -684,7 +728,7 @@
     function deleteSelected() {
       if (selectedIds.size === 0) return;
       pushUndo();
-      [...selectedIds].forEach(id => { if (nodes.find(n => n.type === 'root')?.id !== id && nodes.find(n => n.id === id)) deleteNodeById(id); });
+      [...selectedIds].forEach(id => { if (nodes.find(n => n.id === id)) deleteNodeById(id); });
       selectedIds.clear(); syncNodes(); scheduleSave();
     }
 
@@ -743,7 +787,6 @@
       delBtn.addEventListener('pointerdown', e => { e.stopPropagation(); });
       delBtn.addEventListener('click', e => {
         e.stopPropagation();
-        if (node.type === 'root') return;
         if (confirm(`¿Eliminar "${node.label || 'sin título'}"?`)) {
           deleteNodeById(node.id);
           syncNodes();
@@ -1105,6 +1148,7 @@
       else if (nodeType === 'note') { if (!label) return; extra = { nodeKind: 'note' }; }
       else { if (!label) return; }
       if (freeNodePos) { addFreeNode(freeNodePos.x, freeNodePos.y, label, selectedColor, extra); }
+      else if (pendingParentId === null || !nodes.find(n => n.id === pendingParentId)) { addFreeNode((wrap.clientWidth/2 - transform.x)/transform.scale, (wrap.clientHeight/2 - transform.y)/transform.scale, label, selectedColor, extra); }
       else { const parent = nodes.find(n => n.id === pendingParentId); const type = !parent ? 'child' : parent.type === 'root' ? 'child' : 'grandchild'; const angle = Math.random() * 2 * Math.PI; const dist = type === 'child' ? 280 : 160; addNode(pendingParentId, label, Math.cos(angle) * dist, Math.sin(angle) * dist, type, selectedColor, extra); }
       syncNodes(); scheduleSave();
       document.getElementById('modal-input').value = ''; document.getElementById('link-url-input').value = '';
@@ -1130,7 +1174,7 @@
     document.getElementById('ctx-add-child').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();openModal(ctxNodeId);closeCtxMenu();});
     document.getElementById('ctx-color').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const nid=ctxNodeId;closeCtxMenu();showNodeColorPopup(e.clientX,e.clientY,nid);});
     document.getElementById('ctx-link').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const n=nodes.find(n=>n.id===ctxNodeId);if(n?.url)window.open(n.url,'_blank','noopener');closeCtxMenu();});
-    document.getElementById('ctx-del').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const n=nodes.find(n=>n.id===ctxNodeId);if(n?.type==='root'){toast('No puedes eliminar el nodo raíz');closeCtxMenu();return;}if(confirm(`¿Eliminar "${n?.label}"?`)){deleteNodeById(ctxNodeId);syncNodes();scheduleSave();}closeCtxMenu();});
+    document.getElementById('ctx-del').addEventListener('click',e=>{if(!ctxNodeId)return;e.stopPropagation();const n=nodes.find(n=>n.id===ctxNodeId);if(confirm(`¿Eliminar "${n?.label}"?`)){deleteNodeById(ctxNodeId);syncNodes();scheduleSave();}closeCtxMenu();});
 
     function showNodeColorPopup(x, y, nodeId) { colorPopupTarget = { type: 'node', id: nodeId }; showColorPopup(x, y); }
     function showGroupColorPopup(x, y, groupId) { colorPopupTarget = { type: 'group', id: groupId }; showColorPopup(x, y); }
@@ -1168,6 +1212,55 @@
     function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2500); }
     function updateCount(){ document.getElementById('node-count').textContent=nodes.length+' nodos'; }
     window.addEventListener('resize',updatePositions);
+    new ResizeObserver(() => updatePositions()).observe(wrap);   // reajusta el lienzo al abrir/cerrar el calendario
+
+    // Panel de Google Calendar (izquierda o derecha)
+    (function() {
+      const ws = document.getElementById('workspace'), frame = document.getElementById('cal-frame'),
+            setup = document.getElementById('cal-setup'), input = document.getElementById('cal-src-input');
+      const K = { src: 'mindflow_cal_src', side: 'mindflow_cal_side', open: 'mindflow_cal_open', acc: 'mindflow_cal_account' };
+      const get = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch(e) { return d; } };
+      const set = (k, v) => { try { localStorage.setItem(k, v); } catch(e) {} };
+      let src = get(K.src, ''), side = get(K.side, 'right'), open = get(K.open, '0') === '1', editing = false;
+      let account = get(K.acc, '');   // correo de la cuenta de Google con la que entraste
+
+      function buildUrl(raw) {
+        raw = (raw || '').trim(); if (!raw) return '';
+        const m = raw.match(/https:\/\/calendar\.google\.com\/calendar\/[^"'\s<>]+/);
+        if (m) return m[0].replace(/&amp;/g, '&');
+        let tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(e) {}
+        const ids = raw.split(/[\s,;]+/).filter(Boolean).map(id => 'src=' + encodeURIComponent(id)).join('&');
+        return 'https://calendar.google.com/calendar/embed?' + ids + '&hl=es&mode=WEEK&showTitle=0&showPrint=0&showTabs=0&showCalendars=0&showTz=0' + (tz ? '&ctz=' + encodeURIComponent(tz) : '');
+      }
+      function render() {
+        ws.classList.toggle('cal-open', open);
+        ws.classList.toggle('cal-left', side === 'left');
+        const url = buildUrl(src || account);
+        document.getElementById('cal-login').style.display = (!url && !editing) ? 'flex' : 'none';
+        setup.style.display = editing ? 'flex' : 'none';
+        frame.style.display = (url && !editing) ? 'block' : 'none';
+        if (url && open && frame.getAttribute('src') !== url) frame.setAttribute('src', url);
+        document.getElementById('btn-cal').classList.toggle('btn-primary', open);
+      }
+      function save() {
+        src = input.value.trim(); set(K.src, src); editing = false;
+        render();
+      }
+      document.getElementById('btn-cal').addEventListener('click', () => { open = !open; set(K.open, open ? '1' : '0'); render(); });
+      document.getElementById('cal-close').addEventListener('click', () => { open = false; set(K.open, '0'); render(); });
+      document.getElementById('cal-swap').addEventListener('click', () => { side = side === 'right' ? 'left' : 'right'; set(K.side, side); render(); });
+      document.getElementById('cal-config').addEventListener('click', () => { editing = !editing; input.value = src; render(); if (editing) input.focus(); });
+      document.getElementById('cal-save').addEventListener('click', save);
+      document.getElementById('cal-login-btn').addEventListener('click', () => { if (window.MindFlow && window.MindFlow.authClick) window.MindFlow.authClick(); });
+      // Lo llama el módulo de Firebase cada vez que cambia la sesión de Google
+      window.mfSetCalUser = function(u) {
+        account = (u && u.email) || ''; set(K.acc, account);
+        if (!account) frame.removeAttribute('src');
+        render();
+      };
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+      render();
+    })();
 
     // Reloj
     function updateClock() { infoTime.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
@@ -1248,18 +1341,6 @@
         tabs = [createDefaultTabState('Pizarra 1')];
         currentTabIndex = 0;
         loadTabState(0);
-        const rootId = addNodeInternal(null, '🧠 Mis tareas', 0, 0, 'root', '#ffffff', undefined, true);
-        const p1 = addNodeInternal(rootId, '💻 Trading Bot', -320, -200, 'child', '#818cf8', undefined, true);
-        addNodeInternal(p1, 'Backtest', -80, -120, 'grandchild', '#818cf8', undefined, true);
-        addNodeInternal(p1, 'Live test', -80, -50, 'grandchild', '#818cf8', undefined, true);
-        const p2 = addNodeInternal(rootId, '🎵 Música', 320, -200, 'child', '#f472b6', undefined, true);
-        addNodeInternal(p2, 'Beats nuevos', 80, -120, 'grandchild', '#f472b6', undefined, true);
-        addNodeInternal(p2, 'Mezcla', 80, -50, 'grandchild', '#f472b6', undefined, true);
-        const p3 = addNodeInternal(rootId, '🌐 Web', -320, 200, 'child', '#22d3ee', undefined, true);
-        addNodeInternal(p3, 'Portfolio', -80, 120, 'grandchild', '#22d3ee', undefined, true);
-        const p4 = addNodeInternal(rootId, '🏋️ Personal', 320, 200, 'child', '#4ade80', undefined, true);
-        addNodeInternal(p4, 'Gym', 80, 120, 'grandchild', '#4ade80', undefined, true);
-        addNodeInternal(p4, 'Sueño', 80, 180, 'grandchild', '#4ade80', undefined, true);
         saveCurrentTabState();
         scheduleSave();
       } else {
@@ -1443,6 +1524,7 @@
 
     onAuthStateChanged(auth, async u => {
       user = u; renderAuth();
+      try { window.mfSetCalUser && window.mfSetCalUser(u); } catch(_) {}
       if (!u) { if (unsubMeta) { unsubMeta(); unsubMeta = null; } return; }
       setCloud('☁ Conectando…');
       try {
