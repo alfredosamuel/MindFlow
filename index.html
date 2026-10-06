@@ -184,7 +184,6 @@
     .zoom-btn { width: 24px; height: 24px; border-radius: var(--radius-full); border: none; background: var(--surface-2); color: var(--text); font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background var(--tr); font-weight: 400; }
     .zoom-btn:hover { background: var(--border); }
     .divider { width: 1px; height: 16px; background: var(--border); }
-    #font-slider { width: 56px; accent-color: #4ade80; }
     #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; }
     #modal-overlay.open { display: flex; }
     #modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: var(--space-6); width: min(400px, 90vw); box-shadow: var(--shadow-lg); animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -269,7 +268,6 @@
       #tab-bar { padding: var(--space-1) var(--space-3); }
       #panel { bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); max-width: calc(100vw - 16px); padding: var(--space-1) var(--space-3); gap: var(--space-1); overflow-x: auto; }
       #panel .panel-label:not(#save-status):not(#cloud-status) { display: none; }
-      #font-slider { width: 60px; }
       #fmt-bar { top: auto; bottom: calc(68px + env(safe-area-inset-bottom)); max-width: calc(100vw - 16px); overflow-x: auto; }
       #toast { bottom: 130px; }
     }
@@ -387,9 +385,6 @@
   <button class="zoom-btn" id="zoom-reset" style="font-size:12px;font-weight: 400;">100%</button>
   <button class="zoom-btn" id="zoom-in">+</button>
   <div class="divider"></div>
-  <span class="panel-label">Texto</span>
-  <input type="range" id="font-slider" min="0.5" max="2" step="0.1" value="1" title="Tamaño de letra">
-  <div class="divider"></div>
   <span class="panel-label" id="node-count">0 nodos</span>
   <div class="divider"></div>
   <span class="panel-label" id="save-status" style="color:#4ade80;">✓ Guardado</span>
@@ -457,7 +452,6 @@
     const wrap = document.getElementById('canvas-wrap');
     const canvas = document.getElementById('canvas');
     const ctx2d = canvas.getContext('2d');
-    const fontSlider = document.getElementById('font-slider');
     const hint = document.getElementById('hint');
     const hintToggle = document.getElementById('hint-toggle');
     const infoPanel = document.getElementById('info-panel');
@@ -576,7 +570,6 @@
       nodeElements.forEach(el => el.remove());
       nodeElements.clear();
       selectedIds.clear();
-      fontSlider.value = labelScale;
       applyLabelScale();
       syncNodes();
       updateAllSelectedClass();
@@ -686,7 +679,7 @@
         nodes: t.nodes || [], edges: t.edges || [], groups: t.groups || [],
         nextId: t.nextId || 1, nextGroupId: t.nextGroupId || 1,
         transform: t.transform || { x: wrap.clientWidth/2, y: wrap.clientHeight/2, scale: 1 },
-        labelScale: t.labelScale || 1, undoStack: [], redoStack: []
+        labelScale: 1, undoStack: [], redoStack: []
       }));
     }
     function saveState() {
@@ -1420,8 +1413,6 @@
     infoToggle.addEventListener('click', (e) => { e.stopPropagation(); infoPanel.classList.toggle('collapsed'); infoToggle.textContent = infoPanel.classList.contains('collapsed') ? '▼' : '▲'; scheduleSave(); });
     hintToggle.addEventListener('click', (e) => { e.stopPropagation(); hint.classList.toggle('collapsed'); hintToggle.textContent = hint.classList.contains('collapsed') ? '▼' : '▲'; scheduleSave(); });
 
-    fontSlider.value = labelScale;
-    fontSlider.addEventListener('input', () => { labelScale = parseFloat(fontSlider.value); applyLabelScale(); updatePositions(); scheduleSave(); });
 
     // Export/Import
     function exportJSON() {
@@ -1476,7 +1467,7 @@
       syncNodes();
       renderTabs();
       document.getElementById('zoom-reset').textContent = Math.round(transform.scale*100)+'%';
-      fontSlider.value = labelScale; applyLabelScale();
+      applyLabelScale();
       infoToggle.textContent = infoPanel.classList.contains('collapsed') ? '▼' : '▲';
       hintToggle.textContent = hint.classList.contains('collapsed') ? '▼' : '▲';
     }
