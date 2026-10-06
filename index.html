@@ -150,6 +150,13 @@
     .node.free { padding: var(--space-3) var(--space-4); min-width: 100px; box-shadow: var(--shadow-md); }
     .node.grandchild { padding: var(--space-2) var(--space-3); min-width: 80px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-radius: var(--radius-lg); }
     .node.image-node { padding: var(--space-2); flex-direction: column; gap: var(--space-2); min-width: 120px; }
+    .rz { display: none; position: absolute; z-index: 6; touch-action: none; }
+    .node-wrap.selected .rz { display: block; }
+    .rz-n, .rz-s { left: 8px; right: 8px; height: 8px; cursor: ns-resize; } .rz-n { top: -5px; } .rz-s { bottom: -5px; }
+    .rz-e, .rz-w { top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; } .rz-e { right: -5px; } .rz-w { left: -5px; }
+    .rz-ne, .rz-nw, .rz-se, .rz-sw { width: 12px; height: 12px; background: #4ade80; border: 2px solid var(--bg); border-radius: 3px; }
+    .rz-ne { top: -7px; right: -7px; cursor: nesw-resize; } .rz-nw { top: -7px; left: -7px; cursor: nwse-resize; } .rz-se { bottom: -7px; right: -7px; cursor: nwse-resize; } .rz-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+    .node-img.sized { max-width: none; max-height: none; height: auto; object-fit: fill; }
     .node-img { border-radius: var(--radius-md); max-width: 180px; max-height: 140px; object-fit: cover; display: block; pointer-events: none; }
     .node.link-node { padding: var(--space-3) var(--space-4); flex-direction: column; gap: var(--space-1); min-width: 140px; }
     .node-link-url { font-size: 10px; opacity: 0.6; text-decoration: underline; word-break: break-all; max-width: 160px; pointer-events: all; cursor: pointer; }
@@ -770,7 +777,42 @@
       else if (isFreeText(node)) { el.classList.add('free-text'); el.style.background = 'var(--bg)'; el.style.border = ''; el.style.color = dc(node.color); }
       else { el.style.background = fill(dc(node.color), fa()); el.style.border = `2px solid ${dc(node.color)}`; el.style.color = dc(node.color); }
     }
+    // Tamaño inicial de una imagen pegada: proporcional al zoom actual (máx. 35% del ancho y 50% del alto visibles)
+    function fitW(im) {
+      const nw = im.naturalWidth || 180, ar = nw / (im.naturalHeight || nw);
+      return Math.max(40, Math.round(Math.min(nw, wrap.clientWidth * 0.35 / transform.scale, wrap.clientHeight * 0.5 / transform.scale * ar)));
+    }
+    function applySize(node, wrapEl) {
+      const el = wrapEl.querySelector('.node'), img = el.querySelector('.node-img');
+      if (img) { if (node.iw) { img.classList.add('sized'); img.style.width = node.iw + 'px'; } return; }
+      el.style.boxSizing = 'border-box'; el.style.width = node.w ? node.w + 'px' : ''; el.style.minHeight = node.h ? node.h + 'px' : '';
+      const l = el.querySelector('.node-label'); if (l && node.w) l.style.maxWidth = 'none';
+    }
+    function startResize(e, node, wrapEl, d) {
+      e.stopPropagation(); e.preventDefault(); const hd = e.currentTarget; hd.setPointerCapture(e.pointerId);
+      const el = wrapEl.querySelector('.node'), img = el.querySelector('.node-img'), sx = d.includes('e') ? 1 : d.includes('w') ? -1 : 0, sy = d.includes('s') ? 1 : d.includes('n') ? -1 : 0;
+      const x0 = e.clientX, y0 = e.clientY, w0 = img ? img.offsetWidth : el.offsetWidth, h0 = el.offsetHeight, nx = node.x, ny = node.y;
+      const ar = img ? (img.naturalWidth / img.naturalHeight || w0 / (img.offsetHeight || 1)) : 1;
+      pushUndo();
+      hd.onpointermove = m => {
+        const dx = (m.clientX - x0) / transform.scale, dy = (m.clientY - y0) / transform.scale;
+        if (img) { const nw = Math.max(30, w0 + (sx ? sx * dx : sy * dy * ar)), dw = nw - w0, dh = dw / ar; node.iw = Math.round(nw); node.x = nx + (sx ? sx * dw / 2 : 0); node.y = ny + (sy ? sy * dh / 2 : 0); }
+        else { const nw = sx ? Math.max(60, w0 + sx * dx) : w0, nh = sy ? Math.max(28, h0 + sy * dy) : h0; if (sx) node.w = Math.round(nw); if (sy) node.h = Math.round(nh); node.x = nx + sx * (nw - w0) / 2; node.y = ny + sy * (nh - h0) / 2; }
+        applySize(node, wrapEl); positionNode(node); drawEdges(); drawGroups();
+      };
+      hd.onpointerup = () => { hd.onpointermove = hd.onpointerup = null; scheduleSave(); };
+    }
     function createNodeEl(node) {
+      const had = nodeElements.has(node.id), wrapEl = createNodeElBase(node);
+      if (!had) {
+        applySize(node, wrapEl);
+        const k = node.nodeKind;
+        if (node.type !== 'root' && (!k || k === 'text' || k === 'note' || k === 'image'))
+          ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].forEach(d => { const hd = document.createElement('div'); hd.className = 'rz rz-' + d; hd.addEventListener('pointerdown', e => startResize(e, node, wrapEl, d)); wrapEl.appendChild(hd); });
+      }
+      return wrapEl;
+    }
+    function createNodeElBase(node) {
       if (nodeElements.has(node.id)) return nodeElements.get(node.id);
       const wrapEl = document.createElement('div');
       wrapEl.className = 'node-wrap' + (node.type === 'root' ? ' root-wrap' : '');
@@ -1149,7 +1191,7 @@
     document.addEventListener('paste', async e => {
       if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return; e.preventDefault();
       const items=Array.from(e.clipboardData.items); const imgItem=items.find(i=>i.type.startsWith('image/'));
-      if(imgItem){ pushUndo(); const file=imgItem.getAsFile(); const reader=new FileReader(); reader.onload=ev=>{ addFreeNode(lastMousePos.x,lastMousePos.y,'','#22d3ee',{nodeKind:'image',imgSrc:ev.target.result}); syncNodes(); scheduleSave(); toast('🖼️ Imagen pegada'); }; reader.readAsDataURL(file); return; }
+      if(imgItem){ pushUndo(); const file=imgItem.getAsFile(); const reader=new FileReader(); reader.onload=ev=>{ const im=new Image(); im.onload=()=>{ addFreeNode(lastMousePos.x,lastMousePos.y,'','#22d3ee',{nodeKind:'image',imgSrc:ev.target.result,iw:fitW(im)}); syncNodes(); scheduleSave(); toast('🖼️ Imagen pegada'); }; im.src=ev.target.result; }; reader.readAsDataURL(file); return; }
       const textItem=items.find(i=>i.type==='text/plain');
       if(textItem){ textItem.getAsString(text=>{ text=text.trim(); if(!text)return; pushUndo(); if(/^https?:\/\//i.test(text)){ addFreeNode(lastMousePos.x,lastMousePos.y,text.length>40?text.slice(0,40)+'…':text,'#22d3ee',{nodeKind:'link',url:text}); } else { const c='auto'; addFreeNode(lastMousePos.x,lastMousePos.y,text.slice(0,500),c,{nodeKind:'text'}); } syncNodes(); scheduleSave(); toast('📝 Pegado'); }); return; }
       toast('⚠️ No se pudo pegar');
@@ -1444,7 +1486,7 @@
       e.preventDefault(); const file=Array.from(e.dataTransfer.files).find(f=>f.name.endsWith('.json'));
       if(file){importJSON(file);return;} const imgFile=Array.from(e.dataTransfer.files).find(f=>f.type.startsWith('image/'));
       if(imgFile){ pushUndo(); const rect=wrap.getBoundingClientRect(); const wx=(e.clientX-rect.left-transform.x)/transform.scale, wy=(e.clientY-rect.top-transform.y)/transform.scale;
-        const reader=new FileReader(); reader.onload=ev=>{addFreeNode(wx,wy,'','#22d3ee',{nodeKind:'image',imgSrc:ev.target.result});syncNodes();scheduleSave();toast('🖼️ Imagen añadida');}; reader.readAsDataURL(imgFile); return; }
+        const reader=new FileReader(); reader.onload=ev=>{const im=new Image();im.onload=()=>{addFreeNode(wx,wy,'','#22d3ee',{nodeKind:'image',imgSrc:ev.target.result,iw:fitW(im)});syncNodes();scheduleSave();toast('🖼️ Imagen añadida');};im.src=ev.target.result;}; reader.readAsDataURL(imgFile); return; }
       const url=e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain');
       if(url&&/^https?:\/\//i.test(url.trim())){ pushUndo(); const rect=wrap.getBoundingClientRect(); const wx=(e.clientX-rect.left-transform.x)/transform.scale, wy=(e.clientY-rect.top-transform.y)/transform.scale;
         addFreeNode(wx,wy,url.length>40?url.slice(0,40)+'…':url,'#22d3ee',{nodeKind:'link',url:url.trim()}); syncNodes(); scheduleSave(); toast('🔗 Link añadido'); }
